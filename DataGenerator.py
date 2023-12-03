@@ -3,52 +3,66 @@ import timeit
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
 import os
+import json
 
 load_dotenv()
 api_key = os.getenv('yt_secret_key')
 os.chdir('D:/Machine Learning/SLM-Project/')
 youtube = build('youtube', 'v3', developerKey=api_key)
 
-# UCA19mAJURyYHbJzhfpqhpCA: action lab shorts
-# UCsXVk37bltHxD1rDPwtNM8Q: kurzgesagt in a nutshell
-# UCRcgy6GzDeccI7dkbbBna3Q: Lemmino
-UserInput = 'UCsXVk37bltHxD1rDPwtNM8Q'
-
 start_time = timeit.default_timer()
 
+file_path = 'channelIDs.json'
+with open(file_path, 'r') as file:
+  channelData = json.load(file)
+
 def fetchVideoUrl(channelId):
-  try:
-    # fetches the channel's info
-    channelRes = youtube.channels().list(
-      part='contentDetails', id=channelId
-    ).execute()
-    
-    # uses the channel info and then fetches the playlist 
-    if 'items' in channelRes and channelRes['items']:
-      playlistId = channelRes['items'][0]['contentDetails']['relatedPlaylists']['uploads']
+    next_page_token = None
+    videoIds = []
 
-      # uses that playlist info and then fetches the links of uploaded videos
-      playlistResult = youtube.playlistItems().list(
-        part='contentDetails',
-        playlistId=playlistId,
-        maxResults=50
-      ).execute()
-      
-      # returning an array of videoId
-      videoIds = [item['contentDetails']['videoId'] for item in playlistResult.get('items', [])]
-      return videoIds
-  except Exception as e:
-    print(f"An error occured: {e}")
+    while True:
+        # fetches the channel's info
+        channelRes = youtube.channels().list(
+            part='contentDetails', id=channelId
+        ).execute()
 
-# save the links in json format and in some file
-import json
+        # uses the channel info and then fetches the playlist
+        if 'items' in channelRes and channelRes['items']:
+            playlistId = channelRes['items'][0]['contentDetails']['relatedPlaylists']['uploads']
 
-urlDict = []
-videoIdUrls = fetchVideoUrl(UserInput)
+            # uses that playlist info and then fetches the links of uploaded videos
+            playlistResult = youtube.playlistItems().list(
+                part='contentDetails', playlistId=playlistId,
+                maxResults=100, pageToken=next_page_token
+            ).execute()
+
+            # append videoIds from the current page
+            videoIds.extend([item['contentDetails']['videoId'] for item in playlistResult.get('items', [])])
+
+            next_page_token = playlistResult.get('nextPageToken')
+
+            if not next_page_token:
+                break
+
+    return videoIds
+
+# Initialize an empty list to store all videoIds
+all_videoIds = []
+
+for channel_id in channelData:
+    videoIdUrls = fetchVideoUrl(channel_id)
+    all_videoIds.extend(videoIdUrls)
+
+for channel_id in channelData:
+  videoIdUrls = fetchVideoUrl(channel_id)
 
 vidFetchTime = timeit.default_timer()
+
+print(len(videoIdUrls))
 print(f"videos fetched in: {vidFetchTime - start_time} secs")
 
+# converting videoIds into videoUrls
+urlDict = []
 for i in videoIdUrls:
   videoLink = f"https://www.youtube.com/watch?v={i}"
   urlDict.append(videoLink)
@@ -98,13 +112,10 @@ capFetchTime = timeit.default_timer()
 print(f"captions fetched in: {capFetchTime - vidFetchTime} secs")
 
 # save those captions in a file, all of them in one
-# ...
-
-# save those captions in a file, each video's captions separated by newlines
 with open('captions.txt', 'w', encoding='utf-8') as file:
   for video_captions in caption:
     for line in video_captions:
-      file.write(line['text'] + '\n')
+      file.write(line['text'] + ' ')
       
 print('captions file saved successfully!')
 writingTime = timeit.default_timer()
