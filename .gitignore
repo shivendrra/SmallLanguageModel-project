@@ -1,0 +1,4 @@
+#  .gitignore
+.env
+testCodes.py
+youtube_fetch.log
