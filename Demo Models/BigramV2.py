@@ -79,7 +79,7 @@ class BigramLanguageModel(nn.Module):
     token_embd = self.token_embedding_table(index) # B, T, C
     pos_embd = self.position_embedding_table(torch.arange(T, device=device)) # T, C
     x = token_embd + pos_embd # B, T, C
-    logits = self.lm_head(token_embd) # B, T, vocab_size
+    logits = self.lm_head(x) # B, T, vocab_size
 
     if targets is None:
       loss = None
