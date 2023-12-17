@@ -9,6 +9,7 @@ os.chdir('d:/Machine Learning/SLM-Project/Data Collection/')
 api_key = os.getenv('yt_secret_key')
 
 from googleapiclient.discovery import build
+from youtube_transcript_api import TranscriptsDisabled, YouTubeTranscriptApi
 youtube = build('youtube', 'v3', developerKey=api_key)
 
 import json
@@ -32,7 +33,7 @@ for links in channelData:
 
       playlistResult = youtube.playlistItems().list(
         part='contentDetails', playlistId=playlistId,
-        maxResults = 100, pageToken = next_page_token
+        maxResults = 50, pageToken = next_page_token
       ).execute()
 
       for item in playlistResult.get('items', []):
@@ -40,9 +41,26 @@ for links in channelData:
           part='snippet',
           id=[item['contentDetails']['videoId']]
         ).execute()
+        
         title = video_response['items'][0]['snippet']['title']
         id = item['contentDetails']['videoId']
-        video_data = {'title': title, 'video_id': id}
+        
+        videoUrl = f"https://www.youtube.com/watch?v={id}"
+        try:
+          captions = YouTubeTranscriptApi.get_transcript(
+            id, languages=['en'], preserve_formatting=True
+          )
+          if captions:
+            formatted_captions = [{caption['text']} for caption in captions]
+            raw_transcripts = ' '.join(caption.pop() for caption in formatted_captions)
+          else:
+            continue
+        except TranscriptsDisabled as e:
+          print(F"There was an error while getting the captions: {e}")
+        except Exception as e:
+          logging.error(f"There was some error while fetching the video: {str(e)}")
+
+        video_data = {'title': title, 'video_id': id, 'captions': str(raw_transcripts)}
         videoNo += 1
         vid_json.append(video_data)
       next_page_token = playlistResult.get('nextPageToken')
