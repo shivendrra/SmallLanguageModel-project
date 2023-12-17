@@ -4,6 +4,9 @@ import logging
 logging.basicConfig(filename='youtube_fetch.log', level=logging.ERROR)
 load_dotenv()
 
+import timeit
+start_time = timeit.default_timer()
+
 import os
 os.chdir('d:/Machine Learning/SLM-Project/Data Collection/')
 api_key = os.getenv('yt_secret_key')
@@ -71,18 +74,6 @@ for links in channelData:
 with open('acs.json', 'w') as file:
   json.dump(vid_json, file, indent=2)
 
+end_time = timeit.default_timer()
 print(f"file written, no of videos fetched were {videoNo}")
-
-
-# "UCsXVk37bltHxD1rDPwtNM8Q",
-#   "UCRcgy6GzDeccI7dkbbBna3Q",
-#   "UCmGSJVG3mCRXVOP4yZrU1Dw",
-#   "UC415bOPUcGSamy543abLmRA",
-#   "UCb_MAhL8Thb3HJ_wPkH3gcw",
-#   "UC9RM-iSvTu1uPJb8X5yp3EQ",
-#   "UCR1IuLEqb6UEA_zQ81kwXfg",
-#   "UCYO_jab_esuFRV4b17AJtAw",
-#   "UCA295QVkf9O1RQ8_-s3FVXg",
-#   "UCqVEHtQoXHmUCfJ-9smpTSg",
-#   "UC4QZ_LsYcvcq7qOsOhpAX4A",
-#   "UCLXo7UDZvByw2ixzpQCufnA"
+print(f"time taken to fetch the data {(end_time - start_time) /60} mins")
