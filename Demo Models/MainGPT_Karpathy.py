@@ -3,8 +3,8 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 # hyperparameters
-batch_size = 16 # how many independent sequences will we process in parallel?
-block_size = 32 # what is the maximum context length for predictions?
+batch_size = 16 # no of independent sequences process in parallel
+block_size = 32 # maximum context length for predictions
 max_iters = 5000
 eval_interval = 100
 learning_rate = 1e-3
@@ -20,10 +20,10 @@ torch.manual_seed(1337)
 with open('training_data.txt', 'r', encoding='utf-8') as f:
     text = f.read()
 
-# here are all the unique characters that occur in this text
 chars = sorted(list(set(text)))
 vocab_size = len(chars)
-# create a mapping from characters to integers
+
+# encoder - decoder
 stoi = { ch:i for i,ch in enumerate(chars) }
 itos = { i:ch for i,ch in enumerate(chars) }
 encode = lambda s: [stoi[c] for c in s] # encoder: take a string, output a list of integers
@@ -37,6 +37,7 @@ val_data = data[n:]
 
 # data loading
 def get_batch(split):
+
     # generate a small batch of data of inputs x and targets y
     data = train_data if split == 'train' else val_data
     ix = torch.randint(len(data) - block_size, (batch_size,))
@@ -46,6 +47,7 @@ def get_batch(split):
     return x, y
 
 @torch.no_grad()
+
 def estimate_loss():
     out = {}
     model.eval()
@@ -118,6 +120,7 @@ class Block(nn.Module):
     """ Transformer block: communication followed by computation """
 
     def __init__(self, n_embd, n_head):
+        
         # n_embd: embedding dimension, n_head: the number of heads we'd like
         super().__init__()
         head_size = n_embd // n_head
@@ -130,12 +133,11 @@ class Block(nn.Module):
         x = x + self.sa(self.ln1(x))
         x = x + self.ffwd(self.ln2(x))
         return x
-
-# super simple bigram model
 class BigramLanguageModel(nn.Module):
 
     def __init__(self):
         super().__init__()
+        
         # each token directly reads off the logits for the next token from a lookup table
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
@@ -205,9 +207,7 @@ for iter in range(max_iters):
     loss.backward()
     optimizer.step()
 
-# Save the trained model
-torch.save(model.state_dict(), 'transformer_model.pth')
-
 # generate from the model
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
 print(decode(m.generate(context, max_new_tokens=2000)[0].tolist()))
+torch.save(model.state_dict(), 'transformer_model.pth')
