@@ -14,7 +14,7 @@ api_key = os.getenv('yt_secret_key')
 os.chdir("d:/Machine Learning/SLM-Project/")
 youtube = build('youtube', 'v3', developerKey=api_key)
 
-file_path = 'channelIds.json'
+file_path = 'Data Collection/moreChannelIDs.json'
 with open(file_path, 'r') as file:
   channelData = json.load(file)
 
@@ -65,9 +65,9 @@ for links in channelData:
     except Exception as e:
       logging.error(f"There was some error while getting the captions: {str(e)}")
 
-    with open('Data/training_data.txt', 'a', encoding='utf-8') as file:
+    with open('Data/new_training_data.txt', 'a', encoding='utf-8') as file:
       for videoCaptions in raw_transcripts:
         for line in videoCaptions:
           file.write(line['text'] + ' ')
 
-print(f"time taken to execute the code is {timeit.default_timer() - start_time} mins")
+print(f"time taken to execute the code is {(timeit.default_timer() - start_time) / 3600} hrs")

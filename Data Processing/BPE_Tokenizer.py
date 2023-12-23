@@ -1,18 +1,16 @@
 import os
+import nltk
 os.chdir('D:/Machine Learning/SLM-Project/')
 
 # data for training the BPE
-with open('Data/captions.txt', 'r', encoding='utf-8') as file:
+with open('Data/training_data.txt', 'r', encoding='utf-8') as file:
   captions = file.read()
-
-# tokenizing
-import nltk
 token_caps = nltk.word_tokenize(captions)
 
-# train test split
+# train test split for training data
 n = int(0.8*len(token_caps))
-train_data = token_caps[:n]
-val_data = token_caps[n:]
+bpe_train_data = token_caps[:n]
+bpe_val_data = token_caps[n:]
 
 # creating a sub-word level tokenizer
 import re
@@ -101,25 +99,45 @@ class SubwordTokenizer:
     return accuracy
 
 # Train the tokenizer on the training data
-num_merges = 10
+num_merges = 30
 tokenizer = SubwordTokenizer(num_merges)
-tokenizer.learn_bpe(train_data)
+tokenizer.learn_bpe(bpe_train_data)
 
 # tokenized validation data
-tokenized_validation_data = [tokenizer.tokenize(sentence) for sentence in val_data]
+tokenized_validation_data = [tokenizer.tokenize(sentence) for sentence in bpe_val_data]
 # detokenized val data 
 detokenized_validation_data = [tokenizer.detokenize(tokens) for tokens in tokenized_validation_data]
 
-# importing data to tokenize
-with open('Data/training_data.txt', 'r', encoding='utf-8') as file:
-  token_data = file.read()
+# data for tokenization
+with open('Data/new_training_data.txt', 'r', encoding='utf-8') as file:
+  data = file.read()
 
-token_word = nltk.word_tokenize(token_data)
-# token_word = token_data
+# train-test split for token data
+i = int(0.9*len(data)) # first 90% will be train, rest val
+train_data = data[:i]
+val_data = data[i:]
 
+chars = sorted(list(set(data)))
+vocab_size = len(chars)
+print(''.join(chars))
+print(vocab_size)
+
+# tokenizing the data seperately
+# normal tokenization first
+train_word = nltk.word_tokenize(train_data)
+val_word = nltk.word_tokenize(val_data)
+
+# sub-word tokenization
+train_data = tokenizer.tokenize(train_word)
+val_data = tokenizer.tokenize(val_word)
+
+with open('Data/tokenized_train_data.txt', 'w', encoding='utf-8') as file:
+  file.write(str(train_data))
+
+with open('Data/tokenized_val_data.txt', 'w', encoding='utf-8') as file:
+  file.write(str(val_data))
+
+print('file written successfully')
 # tokenizing the data
-tokenized_corpus = tokenizer.tokenize(token_word)
-print(tokenized_corpus[:20])
-
-detokenized_corpus = tokenizer.detokenize(tokenized_corpus)
-print(detokenized_corpus[:30])
+print(train_data[:10])
+print(val_data[:10])
