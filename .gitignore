@@ -4,4 +4,4 @@ testCodes.py
 youtube_fetch.log
 Links and Teachings.txt
 Data/new_training_data.txt
-.pth
+*.pth
