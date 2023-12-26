@@ -14,7 +14,7 @@ api_key = os.getenv('yt_secret_key')
 os.chdir("d:/Machine Learning/SLM-Project/")
 youtube = build('youtube', 'v3', developerKey=api_key)
 
-file_path = 'Data Collection/moreChannelIDs.json'
+file_path = 'Data Collection/more_channel_ids.json'
 with open(file_path, 'r') as file:
   channelData = json.load(file)
 

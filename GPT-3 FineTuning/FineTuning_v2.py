@@ -1,1 +1,1 @@
-from openai import OpenAI
+# this code will finetune self-made base model
