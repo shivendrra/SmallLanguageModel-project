@@ -65,7 +65,7 @@ for links in channelData:
     except Exception as e:
       logging.error(f"There was some error while getting the captions: {str(e)}")
 
-    with open('Data/new_training_data.txt', 'a', encoding='utf-8') as file:
+    with open('Data/YT_data_v4.txt', 'a', encoding='utf-8') as file:
       for videoCaptions in raw_transcripts:
         for line in videoCaptions:
           file.write(line['text'] + ' ')

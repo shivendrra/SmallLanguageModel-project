@@ -24,6 +24,6 @@ def combine_text_files(input_directory, output_file):
         print(f"Skipping non-text file: {file_name}")
 
 if __name__ == "__main__":
-  input_directory = "Data/zipped files"
-  output_file = "Data/more_data.txt"
+  input_directory = "Data/txt files"
+  output_file = "Data/txt files/more_data.txt"
   combine_text_files(input_directory, output_file)
