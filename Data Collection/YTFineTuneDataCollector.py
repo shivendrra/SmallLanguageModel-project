@@ -16,7 +16,7 @@ from youtube_transcript_api import TranscriptsDisabled, YouTubeTranscriptApi
 youtube = build('youtube', 'v3', developerKey=api_key)
 
 import json
-file_path = 'channelIDs.json'
+file_path = 'channel_ids.json'
 with open(file_path, 'r') as file:
   channelData = json.load(file)
     
@@ -66,12 +66,13 @@ for links in channelData:
         video_data = {'title': title, 'video_id': id, 'captions': str(raw_transcripts)}
         videoNo += 1
         vid_json.append(video_data)
+        print(f"no of video with valid captions: {videoNo}")
       next_page_token = playlistResult.get('nextPageToken')
     
     if not next_page_token:
       break
 
-with open('acs.json', 'w') as file:
+with open('finetune_data.json', 'w') as file:
   json.dump(vid_json, file, indent=2)
 
 end_time = timeit.default_timer()
