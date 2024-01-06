@@ -25,5 +25,5 @@ def combine_text_files(input_directory, output_file):
 
 if __name__ == "__main__":
   input_directory = "Data/txt files"
-  output_file = "Data/txt files/more_data.txt"
+  output_file = "Data/txt files/big_data.txt"
   combine_text_files(input_directory, output_file)
