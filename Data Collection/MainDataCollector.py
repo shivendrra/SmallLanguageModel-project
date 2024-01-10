@@ -18,6 +18,8 @@ file_path = 'Data Collection/channel_Ids.json'
 with open(file_path, 'r') as file:
   channelData = json.load(file)
 
+print('code start!')
+
 videoNo = 0
 for links in channelData:
   next_page_token = None
@@ -55,19 +57,21 @@ for links in channelData:
           formatted_captions = [{'text': caption['text']} for caption in captions]
           raw_transcripts.append(formatted_captions)
           videoNo += 1
-          print(f"Number of videos with valid captions are: {videoNo}")
+          if videoNo % 500 == 0:
+            print('\n', f"Number of videos with valid captions are: {videoNo}", '\n')
         else:
           continue
       except TranscriptsDisabled as e:
-        print(F"There was an error while getting the captions: {e}")
+        print("subtitles not present!")
       except Exception as e:
         logging.error(f"There was some error while fetching the video: {str(e)}")
     except Exception as e:
       logging.error(f"There was some error while getting the captions: {str(e)}")
 
-    with open('Data/YT_data_v2.txt', 'a', encoding='utf-8') as file:
+    with open('Data/txt files/YT_data_v6.txt', 'a', encoding='utf-8') as file:
       for videoCaptions in raw_transcripts:
         for line in videoCaptions:
           file.write(line['text'] + ' ')
 
+print(f"total {videoNo} videos were fetched")
 print(f"time taken to execute the code is {(timeit.default_timer() - start_time) / 3600} hrs")
