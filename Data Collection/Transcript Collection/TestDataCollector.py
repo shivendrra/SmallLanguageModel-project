@@ -1,4 +1,8 @@
-# Fetch the links related to some specific youtube channel
+"""
+uses channel_ids to fetch all uploaded videos on that particular channel and their urls and writes it in a file
+and then fetches captions from each of the video and write it into a .txt file
+"""
+
 import timeit
 from googleapiclient.discovery import build
 from dotenv import load_dotenv

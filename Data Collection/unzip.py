@@ -1,3 +1,7 @@
+""" 
+this code is for unzipping and extracting files
+"""
+
 import os
 import gzip
 import shutil

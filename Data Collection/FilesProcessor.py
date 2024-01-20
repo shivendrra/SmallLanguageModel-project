@@ -1,3 +1,7 @@
+"""
+this code adds all the text files in a given folder and then concatinate in a one big .txt file
+"""
+
 import os
 os.chdir("D:/Machine Learning/SLM-Project/")
 

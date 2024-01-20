@@ -1,3 +1,8 @@
+"""
+fetches the captions from each video uploaded on a particular youtube channel
+by channel_id and then writes it in a json file as with title, index and transcript data
+"""
+
 from dotenv import load_dotenv
 import logging
 

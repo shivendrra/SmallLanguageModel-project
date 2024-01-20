@@ -14,7 +14,7 @@ api_key = os.getenv('yt_secret_key')
 os.chdir("d:/Machine Learning/SLM-Project/")
 youtube = build('youtube', 'v3', developerKey=api_key)
 
-file_path = 'Data Collection/channel_Ids.json'
+file_path = 'Data Collection/channel_ids_snippet.json'
 with open(file_path, 'r') as file:
   channelData = json.load(file)
 
@@ -68,7 +68,7 @@ for links in channelData:
     except Exception as e:
       logging.error(f"There was some error while getting the captions: {str(e)}")
 
-    with open('Data/txt files/YT_data_v10.txt', 'a', encoding='utf-8') as file:
+    with open('Data/txt files/caption_data.txt', 'a', encoding='utf-8') as file:
       for videoCaptions in raw_transcripts:
         for line in videoCaptions:
           file.write(line['text'] + ' ')
