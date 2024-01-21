@@ -27,8 +27,7 @@ def train_model(model, optimizer, max_iters, eval_interval, eval_iters, train_da
   for iter in range(max_iters):
     if iter % eval_interval == 0 or iter == max_iters - 1:
       losses = estimate_loss(model, eval_iters, train_data, val_data, block_size, device)
-      print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
-    
+      return iter, losses
     xb, yb = get_batch(train_data, block_size, batch_size, device)
     
     logits, loss = model(xb, yb)

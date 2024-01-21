@@ -56,9 +56,14 @@ class SubwordTokenizer:
           found = True
           break
       if not found:
-        tokens.append(word[0])
-        word = word[1:]
+        if word[0] == ' ':
+          tokens.append(' ')
+          word = word[1:]
+        else:
+          tokens.append(word[0])
+          word = word[1:]
     return tokens
+
     
   def detokenize_data(self, tokens):
     detokenized_txt = ''.join(tokens)
@@ -77,4 +82,4 @@ class SubwordTokenizer:
       total_samples += 1
     
     accuracy = correct_tokens / total_samples
-    return accuracy
+    return
