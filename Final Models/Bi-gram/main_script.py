@@ -19,21 +19,20 @@ dropout = params['dropout']
 learning_rate = params['learning_rate']
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-# importing training data
-file_path = 'Data/captions.txt'
+# importing training data for bpe
+file_path = 'Data/training_data.txt'
 with open(file_path, 'r', encoding='utf-8') as file:
   captions = file.read()
 
-chars = sorted(list(set(captions)))
-vocab_size = len(chars)
+# importing training data for model
+with open('Data/captions.txt', 'r', encoding='utf-8') as file:
+  corpus = file.read()
 
-print(f"list of unique characters in dataset: {''.join(chars)}")
-print(f"vocab size is {vocab_size}")
+from tokenizer import EncoderDecoder
+encoder_decoder = EncoderDecoder()
+encoder_decoder.train_tokenizer(captions, vocab_size=1000)
 
-from encoder import EncoderDecoder
-ed = EncoderDecoder(n_iters=50, train_data=captions)
-
-input_data = ed.encoder(captions)
+input_data = encoder_decoder.encode(corpus)
 
 # train-test split
 n = int(0.9*len(input_data))
@@ -42,18 +41,18 @@ val_data = input_data[n:]
 
 train_data = torch.tensor(train_data, dtype=torch.long)
 val_data = torch.tensor(val_data, dtype=torch.long)
+vocab_size = len(encoder_decoder.tokenizer.get_vocab())
 
-# print(train_data[30:105])
-# print(val_data[:20])
-
-# print(ed.decoder(train_data[30:105]))
-# print(ed.decoder(val_data[:20]))
+decoded_text = encoder_decoder.decode(train_data[:20].tolist())
+print(f"train data {train_data[:20]}")
+print(f"decoded data {decoded_text}")
 
 from bigram_model import BigramLanguageModel
 
 model = BigramLanguageModel(n_embd, block_size, dropout, n_head, n_layer, vocab_size)
 m = model.to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate) 
+
 print(sum(p.numel() for p in m.parameters())/1e6, 'Million parameters')
 
 from train_bigram import train_model

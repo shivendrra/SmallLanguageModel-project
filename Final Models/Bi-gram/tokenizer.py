@@ -1,85 +1,44 @@
-"""
-Byte Pair Encoding sub-word tokenizer, without encoder or decoder
-"""
+from tokenizers import normalizers
+from tokenizers import Tokenizer, models, trainers, pre_tokenizers, decoders, processors
+from tokenizers.normalizers import NFD, StripAccents
 
-from collections import defaultdict
+import os
 
-class SubwordTokenizer:
-  def __init__(self, n_merges):
-    self.n_merges = n_merges
-    self.vocab = None
+current_directory = os.path.dirname(os.path.realpath(__file__))
+os.chdir(current_directory)
 
-  def get_stats(self, vocab):
-    pairs = defaultdict(int)
-    for word, freq in vocab.items():
-      symbols = word.split()
-      for i in range(len(symbols) - 1):
-        pairs[symbols[i], symbols[i+1]] += freq
+class EncoderDecoder:
+  def __init__(self, model_path="custom-model.json"):
+    self.tokenizer = Tokenizer(models.BPE())
+    self.model_path = os.path.join(current_directory, model_path)
+    self.setup_tokenizer()
 
-    return pairs
-    
-  def merge_vocab(self, pair, vocab):
-    new_vocab = {}
-    bigram = ' '.join(pair)
-    replacement = ''.join(pair)
-    for word in vocab:
-      new_word = word.replace(bigram, replacement)
-      new_vocab[new_word] = vocab[word]
+  def train_tokenizer(self, corpus, vocab_size=1000):
+    trainer = trainers.BpeTrainer(special_tokens=["<pad>", "<unk>", "<s>", "<\s>"], vocab_size=vocab_size)
+    self.tokenizer.train_from_iterator(corpus, trainer=trainer)
+    self.save_model()
 
-    return new_vocab
-    
-  def apply_bpe(self, data):
-    vocab = defaultdict(int)
+  def save_model(self):
+    model_directory = os.path.dirname(self.model_path)
+    os.makedirs(model_directory, exist_ok=True)
+    print("Model Path:", self.model_path)
+    self.tokenizer.model.save(model_directory, "custom-model")
 
-    for word in data:
-      vocab[' '.join(list(word))] += 1
-    
-    for i in range(self.n_merges):
-      pairs = self.get_stats(vocab)
-      if not pairs:
-        break
-    
-      best_pair = max(pairs, key=pairs.get)
-      vocab = self.merge_vocab(best_pair, vocab)
-    
-    self.vocab = vocab
-    return vocab
+  def load_model(self):
+    self.tokenizer.model = models.BPE.load(self.model_path)
 
-  def tokenize_data(self, word, vocab):
-    tokens = []
-    while word:
-      found = False
-      for token in vocab:
-        if word.startswith(token):
-          tokens.append(token)
-          word = word[len(token):]
-          found = True
-          break
-      if not found:
-        if word[0] == ' ':
-          tokens.append(' ')
-          word = word[1:]
-        else:
-          tokens.append(word[0])
-          word = word[1:]
+  def setup_tokenizer(self):
+    self.tokenizer.normalizer = normalizers.Sequence([NFD(), StripAccents()])
+    self.tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel()
+    self.tokenizer.decoder = decoders.ByteLevel()
+    self.tokenizer.post_processor = processors.ByteLevel(trim_offsets=True)
+    self.tokenizer.enable_padding(pad_id=0, pad_token="<pad>")
+    self.tokenizer.enable_truncation(max_length=512)
+
+  def encode(self, text):
+    encoding = self.tokenizer.encode(text)
+    return encoding.ids
+
+  def decode(self, ids):
+    tokens = self.tokenizer.decode(ids)
     return tokens
-
-    
-  def detokenize_data(self, tokens):
-    detokenized_txt = ''.join(tokens)
-    return detokenized_txt
-    
-  def validate(self, val_data):
-    correct_tokens = 0
-    total_samples = 0
-
-    for text in val_data:
-      token_txt = self.tokenize_data(text, self.vocab)
-      detoken_txt = self.detokenize_data(token_txt)      
-    
-      if detoken_txt == text:
-        correct_tokens += 1
-      total_samples += 1
-    
-    accuracy = correct_tokens / total_samples
-    return
