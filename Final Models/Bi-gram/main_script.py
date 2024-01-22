@@ -24,18 +24,18 @@ file_path = 'Data/training_data.txt'
 with open(file_path, 'r', encoding='utf-8') as file:
   captions = file.read()
 
-# importing training data for model
-with open('Data/captions.txt', 'r', encoding='utf-8') as file:
-  corpus = file.read()
+# # importing training data for model
+# with open('Data/captions.txt', 'r', encoding='utf-8') as file:
+#   corpus = file.read()
 
 from tokenizer import EncoderDecoder
 encoder_decoder = EncoderDecoder()
-encoder_decoder.train_tokenizer(captions, vocab_size=1000)
+encoder_decoder.train_tokenizer(captions, vocab_size=5000)
 
-input_data = encoder_decoder.encode(corpus)
+input_data = encoder_decoder.encode(captions)
 
 # train-test split
-n = int(0.9*len(input_data))
+n = int(0.95*len(input_data))
 train_data = input_data[:n]
 val_data = input_data[n:]
 
@@ -46,7 +46,7 @@ vocab_size = len(encoder_decoder.tokenizer.get_vocab())
 decoded_text = encoder_decoder.decode(train_data[:20].tolist())
 print(f"train data {train_data[:20]}")
 print(f"decoded data {decoded_text}")
-
+print('-----------------------------')
 from bigram_model import BigramLanguageModel
 
 model = BigramLanguageModel(n_embd, block_size, dropout, n_head, n_layer, vocab_size)
@@ -56,6 +56,6 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 print(sum(p.numel() for p in m.parameters())/1e6, 'Million parameters')
 
 from train_bigram import train_model
-iter, losses = train_model(m, optimizer, max_iters, eval_interval, eval_iters, train_data, val_data, block_size, batch_size, device)
+train_model(m, optimizer, max_iters, eval_interval, eval_iters, train_data, val_data, block_size, batch_size, device)
 
-print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+# print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
