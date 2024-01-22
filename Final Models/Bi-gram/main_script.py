@@ -24,18 +24,18 @@ file_path = 'Data/training_data.txt'
 with open(file_path, 'r', encoding='utf-8') as file:
   captions = file.read()
 
-# # importing training data for model
-# with open('Data/captions.txt', 'r', encoding='utf-8') as file:
-#   corpus = file.read()
+# importing training data for model
+with open('Data/captions.txt', 'r', encoding='utf-8') as file:
+  corpus = file.read()
 
 from tokenizer import EncoderDecoder
 encoder_decoder = EncoderDecoder()
 encoder_decoder.train_tokenizer(captions, vocab_size=5000)
 
-input_data = encoder_decoder.encode(captions)
+input_data = encoder_decoder.encode(corpus)
 
 # train-test split
-n = int(0.95*len(input_data))
+n = int(0.8*len(input_data))
 train_data = input_data[:n]
 val_data = input_data[n:]
 
@@ -56,6 +56,6 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 print(sum(p.numel() for p in m.parameters())/1e6, 'Million parameters')
 
 from train_bigram import train_model
-train_model(m, optimizer, max_iters, eval_interval, eval_iters, train_data, val_data, block_size, batch_size, device)
+steps, train_losses, val_losses = train_model(model, optimizer, max_iters, eval_interval, eval_iters, train_data, val_data, block_size, batch_size, device)
 
-# print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+# print(f"step {steps}: train loss {train_losses:.4f}, val loss {val_losses:.4f}")
