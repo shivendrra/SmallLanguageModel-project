@@ -2,7 +2,7 @@ import json
 import os
 os.chdir('D:/Machine Learning/SLM-Project')
 
-with open('Final Models/Bi-gram/hyperparams.json', 'r', encoding='utf-8') as file:
+with open('Final Models/Transformer/hyperparams.json', 'r', encoding='utf-8') as file:
   params = json.load(file)
 
 import torch
@@ -24,20 +24,30 @@ file_path = 'Data/training_data.txt'
 with open(file_path, 'r', encoding='utf-8') as file:
   captions = file.read()
 
-# importing training data for model
-with open('Data/captions.txt', 'r', encoding='utf-8') as file:
-  corpus = file.read()
+# # importing training data for model
+# with open('Data/captions.txt', 'r', encoding='utf-8') as file:
+#   corpus = file.read()
 
 # tokenizing the data
 from tokenizer import EncoderDecoder
 encoder_decoder = EncoderDecoder()
 encoder_decoder.train_tokenizer(captions, vocab_size=10000)
-input_data = encoder_decoder.encode(corpus)
+input_data = encoder_decoder.encode(captions)
 
 # train-test split
-n = int(0.8*len(input_data))
+n = int(0.9*len(input_data))
 train_data = input_data[:n]
 val_data = input_data[n:]
+
+# print(len(train_data), len(val_data))
+
+# # trim the data
+# train_remainder = len(train_data) % n_embd
+# train_data = train_data[:-train_remainder]
+# val_remainder = len(val_data) % n_embd
+# val_data = val_data[:-val_remainder]
+
+# print(len(train_data), len(val_data))
 
 train_data = torch.tensor(train_data, dtype=torch.long)
 val_data = torch.tensor(val_data, dtype=torch.long)

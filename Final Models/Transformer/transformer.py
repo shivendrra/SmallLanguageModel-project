@@ -17,20 +17,19 @@ class Head(nn.Module):
     self.dropout = nn.Dropout(dropout)
 
   def forward(self, x):
-    B,T,C = x.shape
-    k = self.key(x)   # (B,T,C)
-    q = self.query(x)   # (B,T,C)
-
-    # computing affinities
-    weight = q @ k.transpose(-2, -1) * C**-0.5    # query matrix and key matrix dot product and multiplying dimensions' square root
-    weight = weight.masked_fill(self.tril[:T, :T] == 0, float('-inf'))   # masking triangular part of the matrix 
-    weight = F.softmax(weight, dim=1)   # applying softmax for better probabilities
-    weight = self.dropout(weight)   # droping out some parts
-
-    # performing weitghted aggregation of the values
-    v = self.value(x)   # (B,T,C
-    out = weight @ v   # dot product of weights and values
-
+    B, T, C = x.shape
+    k = self.key(x)
+    q = self.query(x)
+  
+    # compute attention scores ("affinities")
+    wei = q @ k.transpose(-2, -1) * (C // self.tril.size(-1))**-0.5
+    wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
+    wei = F.softmax(wei, dim=-1)
+    wei = self.dropout(wei)
+  
+    # perform the weighted aggregation of the values
+    v = self.value(x)
+    out = wei @ v
     return out
 
 class MultiHeadAttention(nn.Module):
@@ -39,7 +38,7 @@ class MultiHeadAttention(nn.Module):
   def __init__(self, n_embd, n_head, dropout, block_size):
     super().__init__()
     self.heads = nn.ModuleList([Head(n_embd, n_head, dropout, block_size) for _ in range(n_head)])
-    self.proj = nn.Linear(n_embd, n_embd)
+    self.proj = nn.Linear(n_head * (n_embd // n_head), n_embd)
     self.dropout = nn.Dropout(dropout)
 
   def forward(self, x):
@@ -55,7 +54,7 @@ class FeedForward(nn.Module):
     super().__init__()
     self.net = nn.Sequential(
       nn.Linear(n_embd, 4 * n_embd),
-      nn.ReLU(),
+      nn.GELU(),
       nn.Linear(4 * n_embd, n_embd),
       nn.Dropout(dropout),
     )
@@ -66,11 +65,11 @@ class FeedForward(nn.Module):
 class Block(nn.Module):
   """ transformer block: communication followed by computation """
 
-  def __init__(self, n_embd, n_head):
+  def __init__(self, n_embd, n_head, dropout, block_size):
     super().__init__()
     head_size = n_embd // n_head
-    self.sa = MultiHeadAttention(n_head, head_size)
-    self.ffwd = FeedForward(n_embd)
+    self.sa = MultiHeadAttention(n_head, head_size, dropout, block_size)
+    self.ffwd = FeedForward(n_embd, dropout)
     self.ln1 = nn.LayerNorm(n_embd)
     self.ln2 = nn.LayerNorm(n_embd)
 
@@ -85,7 +84,7 @@ class TransformerModel(nn.Module):
     # each token directly reads off the logits for the next token from a lookup table
     self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
     self.position_embedding_table = nn.Embedding(block_size, n_embd)
-    self.blocks = nn.Sequential(*[Block(n_embd, n_head=n_head) for _ in range(n_layer)])
+    self.blocks = nn.Sequential(*[Block(n_embd, n_head, dropout, block_size) for _ in range(n_layer)])
     self.ln_f = nn.LayerNorm(n_embd) # final layer norm
     self.lm_head = nn.Linear(n_embd, vocab_size)
     self.apply(self._init_weights)
@@ -95,7 +94,7 @@ class TransformerModel(nn.Module):
       torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
       if module.bias is not None:
         torch.nn.init.zeros_(module.bias)
-    elif isinstance(module, nn.Embedding):
+    elif isinstance(module, nn.Embedding) and module.weight.numel() > 0:
       torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
   def forward(self, idx, targets=None):
@@ -107,15 +106,16 @@ class TransformerModel(nn.Module):
     x = tok_emb + pos_emb # (B,T,C)
     x = self.blocks(x) # (B,T,C)
     x = self.ln_f(x) # (B,T,C)
+    print("Shape of x before lm_head:", x.shape)
     logits = self.lm_head(x) # (B,T,vocab_size)
     
     if targets is None:
       loss = None
     else:
       B, T, C = logits.shape
-      logits = logits.view(B*T, C)
-      targets = targets.view(B*T)
-      loss = F.cross_entropy(logits, targets)
+      logits = logits.view(B * T, C)
+      targets = targets.view(B * T)
+      loss = F.cross_entropy(logits, targets, ignore_index=-52, reduction='mean')
     return logits, loss
   
   def generate(self, idx, max_new_tokens):
