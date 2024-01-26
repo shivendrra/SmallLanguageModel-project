@@ -1,42 +1,41 @@
-"""
---> this is a webscarpping code for britannica.com
---> uses a search query list to generate a target url
---> fetches the actual url of pages contatning data about the search query topics
-"""
 import os
 os.chdir('D:/Machine Learning/SLM-Project/')
 
 import requests
 from bs4 import BeautifulSoup
 
-def scrapeUrls(query, pgNo):
-  formattedQuery = '%20'.join(query.split(' '))
-  url = f"https://www.britannica.com/search?query={formattedQuery}&page={pgNo}"
-  return url
+class BritannicaUrls:
+  def __init__(self, search_queries, max_limit):
+    self.max_limit = max_limit
+    self.search_queries = search_queries
+    self.headers = {'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246"}
 
-def generateUrls(search_queries, max_limit):
-  links = []
-  for query in search_queries:
-    pageNo = 1
-    for i in range(max_limit):
-      links.append(scrapeUrls(query, pageNo))
-      pageNo += 1
-  return links
+  def build_url(self, query, pageNo):
+    formattedQuery = '%20'.join(query.split(' '))
+    url = f"https://www.britannica.com/search?query={formattedQuery}&page={pageNo}"
+    return url
 
-def getUrls(url):
-  headers = {'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246"} 
-  r = requests.get(url, headers=headers)
-  links = []
-  soup = BeautifulSoup(r.content, 'html.parser')
+  def get_target_url(self, targets):
+    r = requests.get(targets, headers=self.headers)
+    list_url = []
 
-  for li in soup.select('.search-results.col ul.list-unstyled.results li'):
-    link_element = li.select_one('a.font-weight-bold')
-    href = link_element.get('href')
-    links.append(href)
-    print(links)
-  return links
+    if r.status_code == 200:
+      html_content = r.content
+      soup = BeautifulSoup(html_content, 'html.parser')
+      fetched_urls = soup.find_all('a', attrs={'class': 'font-weight-bold font-18'})
+      list_url.extend([url.get('href') for url in fetched_urls])
+      return list_url
 
-if __name__ == "__main__":
-  urls = generateUrls()
-  for url in urls:
-    getUrls(url)
+    else:
+      print(f"skipping this {targets}")
+
+  def generate_urls(self):
+    page_urls = []
+    for query in self.search_queries:
+      pageNo = 1
+      for i in range(self.max_limit):
+        target_url = self.build_url(query, pageNo)
+        pageNo += 1
+        new_url = self.get_target_url(target_url)
+        page_urls.extend(new_url)
+    return page_urls
