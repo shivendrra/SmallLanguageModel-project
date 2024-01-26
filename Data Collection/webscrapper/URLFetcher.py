@@ -3,6 +3,7 @@ os.chdir('D:/Machine Learning/SLM-Project/')
 
 import requests
 from bs4 import BeautifulSoup
+from tqdm import tqdm
 
 class BritannicaUrls:
   def __init__(self, search_queries, max_limit):
@@ -29,8 +30,11 @@ class BritannicaUrls:
     else:
       print(f"skipping this {targets}")
 
-  def generate_urls(self):
+  def generate_urls(self, progress_bar=None):
     page_urls = []
+    total_iterations = len(self.search_queries) * self.max_limit
+    current_iteration = 0
+
     for query in self.search_queries:
       pageNo = 1
       for i in range(self.max_limit):
@@ -38,4 +42,9 @@ class BritannicaUrls:
         pageNo += 1
         new_url = self.get_target_url(target_url)
         page_urls.extend(new_url)
+
+        # Update the progress bar
+        current_iteration += 1
+        if progress_bar:
+          progress_bar.update(1)
     return page_urls
