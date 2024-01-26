@@ -5,22 +5,25 @@
 """
 
 import os
+import json
 os.chdir('D:/Machine Learning/SLM-Project/')
 
-import json
 
 query_file = 'Data Collection/webscrapper/search_queries.json'
+out_file = f'Data/webscrapped data/britannica_output.txt'
 max_limit = 10
+
 with open(query_file, 'r') as file:
   search_queries = json.load(file)
 
-from URLFetcher import generateUrls
+print('fetching snippets from queries')
 
-fetched_urls = generateUrls(search_queries, max_limit)
-out_file = f'Data/webscrapped data/britannica_output.txt'
-headers = {
-  'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246"
-  }
+from URLFetcher import BritannicaUrls
+scrape = BritannicaUrls(search_queries=search_queries, max_limit=10)
+url_sinppets = scrape.generate_urls()
+
+print('fetched snippets successfully!')
+print('scrapping and saving the data-------')
 
 import requests
 from bs4 import BeautifulSoup
@@ -28,7 +31,7 @@ import re
 
 def text_extractor(url_snippet):
   target_url = f"https://britannica.com{url_snippet}"
-  r = requests.get(target_url, headers=headers)
+  r = requests.get(target_url, headers=scrape.headers)
 
   if r.status_code == 200:
     soup = BeautifulSoup(r.content, 'html.parser')
@@ -43,24 +46,8 @@ def text_extractor(url_snippet):
   else:
     print(f"failed to fetch: {target_url}, skipping")
 
-def main(fetched_urls):
-  for new_url in fetched_urls:
-    r = requests.get(new_url, headers=headers)
-
-    if r.status_code == 200:
-      html_content = r.content
-      soup = BeautifulSoup(html_content, 'html.parser')
-      list_url = soup.find_all('a', attrs={'class': 'font-weight-bold font-18'})
-      list_url = [url.get('href') for url in list_url]
-
-      for url_snippet in list_url:
-        page = text_extractor(url_snippet)
-        with open(out_file, 'a', encoding='utf-8') as file:
-          file.write(page)
-
-    else:
-      print(f"Failed to fetch the page: {new_url}, skipping")
-      continue
-
-if __name__ == "__main__":
-  main(fetched_urls)
+if __name__ == '__main__':
+  for snippets in url_sinppets:
+    page = text_extractor(snippets)
+    with open(out_file, 'a', encoding='utf-8') as file:
+      file.write(page)
