@@ -8,7 +8,6 @@ import os
 import json
 os.chdir('D:/Machine Learning/SLM-Project/')
 
-
 query_file = 'Data Collection/webscrapper/search_queries.json'
 out_file = f'Data/webscrapped data/britannica_output.txt'
 max_limit = 10
@@ -16,14 +15,15 @@ max_limit = 10
 with open(query_file, 'r') as file:
   search_queries = json.load(file)
 
-print('fetching snippets from queries')
+from tqdm import tqdm
 
 from URLFetcher import BritannicaUrls
 scrape = BritannicaUrls(search_queries=search_queries, max_limit=10)
-url_sinppets = scrape.generate_urls()
+with tqdm(total=len(search_queries) * max_limit, desc="Generating URL snippets: ") as pbar:
+  url_snippets = scrape.generate_urls(progress_bar=pbar)
 
 print('fetched snippets successfully!')
-print('scrapping and saving the data-------')
+print(f"total snippets: {len(url_snippets)}")
 
 import requests
 from bs4 import BeautifulSoup
@@ -43,11 +43,10 @@ def text_extractor(url_snippet):
 
     return page
 
-  else:
-    print(f"failed to fetch: {target_url}, skipping")
-
 if __name__ == '__main__':
-  for snippets in url_sinppets:
-    page = text_extractor(snippets)
-    with open(out_file, 'a', encoding='utf-8') as file:
-      file.write(page)
+  with tqdm(total=len(url_snippets), desc="Scrapping in progress: ") as pbar:
+    for snippets in url_snippets:
+      page = text_extractor(snippets)
+      with open(out_file, 'a', encoding='utf-8') as file:
+        file.write(page)
+      pbar.update(1)
