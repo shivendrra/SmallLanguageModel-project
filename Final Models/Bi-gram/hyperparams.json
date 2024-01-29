@@ -3,10 +3,10 @@
   "block_size": 32,
   "max_iters": 5000,
   "eval_interval": 100,
-  "learning_rate": 1e-3,
+  "learning_rate": 2e-6,
   "eval_iters": 200,
   "n_embd": 64,
-  "n_head": 4,
-  "n_layer": 4,
-  "dropout": 0.1
+  "n_head": 8,
+  "n_layer": 8,
+  "dropout": 0.2
 }
