@@ -43,4 +43,4 @@ def train_model(model, optimizer, max_iters, eval_interval, eval_iters, train_da
     optimizer.step()
     train_losses.append(loss.item())
   
-  return iter, {'train': sum(train_losses) / len(train_losses)}
+  return iter, {'train': sum(train_losses) / len(train_losses), 'val': losses['val']}
