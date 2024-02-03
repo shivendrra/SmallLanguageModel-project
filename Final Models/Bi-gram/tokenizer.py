@@ -33,7 +33,7 @@ class EncoderDecoder:
     self.tokenizer.decoder = decoders.ByteLevel()
     self.tokenizer.post_processor = processors.ByteLevel(trim_offsets=True)
     self.tokenizer.enable_padding(pad_id=0, pad_token="<pad>")
-    self.tokenizer.enable_truncation(max_length=512)
+    self.tokenizer.enable_truncation(max_length=None)
 
   def encode(self, text):
     encoding = self.tokenizer.encode(text)
