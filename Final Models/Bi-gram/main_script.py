@@ -12,9 +12,6 @@ start_time = timeit.default_timer()
 
 batch_size = params['batch_size']
 block_size = params['block_size']
-max_iters = params['max_iters']
-eval_interval = params['eval_interval']
-eval_iters = params['eval_iters']
 n_head = params['n_head']
 n_embd = params['n_embd']
 n_layer = params['n_layer']
@@ -62,15 +59,15 @@ n_params = sum(p.numel() for p in m.parameters())/1e6
 
 print(n_params, 'Million parameters')
 
-from train_bigram import train_model
-steps, train_losses, val_losses = train_model(model, optimizer, max_iters, eval_interval, eval_iters, train_data, val_data, block_size, batch_size, device)
+from train_model import TrainModel
+steps, train_loss, val_loss= TrainModel(model=model, optimizer=optimizer, train_data=train_data, val_data=val_data, batch_size=batch_size, block_size=block_size)
 
 # train summary visualized
 import matplotlib.pyplot as plt
 
 plt.figure(figsize=(10, 6))
-plt.plot(steps, train_losses, label='Train Loss')
-plt.plot(steps, val_losses, label='Validation Loss')
+plt.plot(steps, train_loss, label='Train Loss')
+plt.plot(steps, val_loss, label='Validation Loss')
 plt.title('Loss Over Steps')
 plt.xlabel('Steps')
 plt.ylabel('Loss')
@@ -83,7 +80,7 @@ print(f"model trained in {(end_time-start_time) / 60 }mins")
 context = 'Let me tell you a story of'
 input_tokens = torch.tensor(encoder_decoder.encode(context), dtype=torch.long, device=device)
 print(input_tokens)
-generated_output = m.generate(idx=input_data, max_new_tokens=20)[0].tolist()
+generated_output = m.generate(idx=input_data, max_new_tokens=20)
 
 print(f"generated output:")
 print(f"'{context}' {encoder_decoder.decode(generated_output)}")
