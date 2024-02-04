@@ -1,46 +1,56 @@
 import torch
+import json
+import os
+os.chdir('D:/Machine Learning/SLM-Project')
 
-def get_batch(data, block_size, batch_size, device):
-  if len(data) < block_size:
-      # Handle the case when len(data) is less than block_size
-    print("Warning!!: Data length is less than block_size. { Skipping batch }")
-    return None, None
+with open('Final Models/Transformer/hyperparams.json', 'r', encoding='utf-8') as file:
+  params = json.load(file)
+
+class TrainModel:
+  def __init__(self, model, optimizer, train_data, val_data, batch_size, block_size):
+    self.max_iters = params['max_iters']
+    self.eval_interval = params['eval_interval']
+    self.eval_iters = params['eval_iters']
+    self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    self.model = model
+    self.optimizer = optimizer
+    self.train_data = train_data
+    self.val_data = val_data
+    self.block_size = block_size
+    self.batch_size = batch_size
+
+  def get_batch(self, split):
+    data = self.train_data if split == 'train' else self.val_data
+    ix = torch.randint(len(data) - self.block_size, (self.batch_size,))
+    x = torch.stack([data[i:i + self.block_size] for i in ix])
+    y = torch.stack([data[i + 1:i + self.block_size + 1] for i in ix])
+    x, y = x.to(self.device), y.to(self.device)
+    return x, y
+
+  def estimate_loss(self):
+    out = {}
+    self.model.eval()
+    for split in ['train', 'val']:
+      losses = torch.zeros(self.eval_iters)
+      for k in range(self.eval_iters):
+        X, Y = self.get_batch(split)
+        logits, loss = self.model(X, Y)
+        losses[k] = loss.item()
+      out[split] = losses.mean()
+      self.model.train()
+      return out
+
+  def train_model(self):
+
+    for iter in range(self.max_iters):
+      if iter % self.eval_interval == 0 or iter == self.max_iters - 1:
+        losses = self.estimate_loss(self.model, self.eval_iters)
+        print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+    
+      xb, yb = self.get_batch('train')
+      logits, loss = self.model(xb, yb)
+      self.optimizer.zero_grad(set_to_none=True)
+      loss.backward()
+      self.optimizer.step()
   
-  ix = torch.randint(len(data) - block_size, (batch_size,))
-  x = torch.stack([data[i:i + block_size] for i in ix])
-  y = torch.stack([data[i + 1:i + block_size + 1] for i in ix])
-  x, y = x.to(device), y.to(device)
-  return x, y
-
-@torch.no_grad()
-def estimate_loss(model, eval_iters, train_data, val_data, block_size, device):
-  out = {}
-  model.eval()
-  for split in ['train', 'val']:
-    losses = torch.zeros(eval_iters)
-    data = train_data if split == 'train' else val_data
-    for k in range(eval_iters):
-      X, Y = get_batch(data, block_size, 1, device)
-      logits, loss = model(X, Y)
-      losses[k] = loss.item()
-    out[split] = losses.mean()
-  model.train()
-  return out
-
-def train_model(model, optimizer, max_iters, eval_interval, eval_iters, train_data, val_data, block_size, batch_size, device):
-  train_losses = []
-  for iter in range(max_iters):
-    
-    if iter % eval_interval == 0 or iter == max_iters - 1:
-      losses = estimate_loss(model, eval_iters, train_data, val_data, block_size, device)
-      print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
-    
-    xb, yb = get_batch(train_data, block_size, batch_size, device)
-    logits, loss = model(xb, yb)
-    
-    optimizer.zero_grad(set_to_none=True)
-    loss.backward()
-    optimizer.step()
-    train_losses.append(loss.item())
-  
-  return iter, {'train': sum(train_losses) / len(train_losses)}
+    # return iter, {'train': sum(train_losses) / len(train_losses)}
