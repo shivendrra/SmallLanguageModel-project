@@ -25,7 +25,7 @@ class EncoderDecoder:
     self.tokenizer.model.save(model_directory, "custom-model")
 
   def load_model(self):
-    self.tokenizer.model = models.BPE.load(self.model_path)
+    self.tokenizer = Tokenizer.from_file(self.model_path)
 
   def setup_tokenizer(self):
     self.tokenizer.normalizer = normalizers.Sequence([NFD(), StripAccents()])
