@@ -9,9 +9,6 @@ import torch
 
 batch_size = params['batch_size']
 block_size = params['block_size']
-max_iters = params['max_iters']
-eval_interval = params['eval_interval']
-eval_iters = params['eval_iters']
 n_head = params['n_head']
 n_embd = params['n_embd']
 n_layer = params['n_layer']
@@ -24,9 +21,9 @@ file_path = 'Data/training_data.txt'
 with open(file_path, 'r', encoding='utf-8') as file:
   captions = file.read()
 
-# # importing training data for model
-# with open('Data/captions.txt', 'r', encoding='utf-8') as file:
-#   corpus = file.read()
+# importing training data for model
+with open('Data/captions.txt', 'r', encoding='utf-8') as file:
+  corpus = file.read()
 
 # tokenizing the data
 from tokenizer import EncoderDecoder
@@ -39,26 +36,10 @@ n = int(0.9*len(input_data))
 train_data = input_data[:n]
 val_data = input_data[n:]
 
-# print(len(train_data), len(val_data))
-
-# # trim the data
-# train_remainder = len(train_data) % n_embd
-# train_data = train_data[:-train_remainder]
-# val_remainder = len(val_data) % n_embd
-# val_data = val_data[:-val_remainder]
-
-# print(len(train_data), len(val_data))
-
 train_data = torch.tensor(train_data, dtype=torch.long)
 val_data = torch.tensor(val_data, dtype=torch.long)
 vocab_size = len(encoder_decoder.tokenizer.get_vocab())
 
-decoded_text = encoder_decoder.decode(train_data[:20].tolist())
-print(f"train data {train_data[:20]}")
-print(f"decoded data {decoded_text}")
-print('-----------------------------')
-
-# transformer block
 from transformer import TransformerModel
 model = TransformerModel(n_embd, block_size, dropout, n_head, n_layer, vocab_size)
 model = model.to(device)
@@ -67,9 +48,8 @@ n_param = sum(p.numel() for p in model.parameters()) / 1e6
 
 print(f"no of parameters present are {n_param} million")
 
-# 
-from train_transformer import train_model
-steps, train_losses, val_losses = train_model(model, optimizer, max_iters, eval_interval, eval_iters, train_data, val_data, block_size, batch_size, device)
+from train_model import TrainModel
+steps, train_loss, val_loss= TrainModel(model=model, optimizer=optimizer, train_data=train_data, val_data=val_data, batch_size=batch_size, block_size=block_size)
 
 # saving the model
 torch.save(model.state_dict(), f"{n_param:.1f}m_transformer_model.pth")

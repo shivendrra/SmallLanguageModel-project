@@ -25,7 +25,7 @@ class EncoderDecoder:
     self.tokenizer.model.save(model_directory, "custom-model")
 
   def load_model(self):
-    self.tokenizer.model = models.BPE.load(self.model_path)
+    self.tokenizer = Tokenizer.from_file(self.model_path)
 
   def setup_tokenizer(self):
     self.tokenizer.normalizer = normalizers.Sequence([NFD(), StripAccents()])
@@ -33,12 +33,12 @@ class EncoderDecoder:
     self.tokenizer.decoder = decoders.ByteLevel()
     self.tokenizer.post_processor = processors.ByteLevel(trim_offsets=True)
     self.tokenizer.enable_padding(pad_id=0, pad_token="<pad>")
-    self.tokenizer.enable_truncation(max_length=512)
 
   def encode(self, text):
     encoding = self.tokenizer.encode(text)
     return encoding.ids
 
   def decode(self, ids):
-    tokens = self.tokenizer.decode(ids)
+    ids_list = ids.tolist()
+    tokens = self.tokenizer.decode(ids_list)
     return tokens
