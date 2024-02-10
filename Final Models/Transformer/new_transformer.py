@@ -11,14 +11,11 @@ class CustomTransformerModel:
         self.position_embedding_table = self.initialize_position_embeddings()
 
     def initialize_token_embeddings(self):
-        # Initialize token embeddings randomly
         token_embeddings = torch.randn(self.vocab_size, self.n_embd)
-        # Normalize the embeddings along the embedding dimension
         token_embeddings /= torch.norm(token_embeddings, dim=1, keepdim=True)
         return token_embeddings
 
     def initialize_position_embeddings(self):
-        # Initialize positional embeddings using sine and cosine functions
         position_embeddings = torch.zeros(self.block_size, self.n_embd)
         for pos in range(self.block_size):
             for i in range(0, self.n_embd, 2):
@@ -35,7 +32,6 @@ class CustomTransformerModel:
         x = tok_emb + pos_emb  # (B, T, C)
         return x
 
-# Example usage
 batch_size = 64
 vocab_size = 483
 block_size = 128
@@ -43,16 +39,11 @@ n_embd = 8
 
 model = CustomTransformerModel(vocab_size, block_size, n_embd)
 idx = torch.randint(0, vocab_size, (batch_size, block_size))
-print("inputs: ", idx.shape)
-
-# Access token embedding table
 token_embeddings = model.token_embedding_table
-print("Token Embeddings Shape:", token_embeddings.shape)
-
-# Access positional embedding table
 position_embeddings = model.position_embedding_table
-print("Positional Embeddings Shape:", position_embeddings.shape)
-
-# Create outputs
 output = model.forward(idx)
+
+print("inputs: ", idx.shape)
+print("Token Embeddings Shape:", token_embeddings.shape)
+print("Positional Embeddings Shape:", position_embeddings.shape)
 print("Output Shape:", output.shape)
