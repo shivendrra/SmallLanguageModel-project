@@ -1,62 +1,58 @@
 import torch
-import torch.nn as nn
+import numpy as np
 
-class PositionalEmbedding(nn.Module):
-    """ generates positional encodings """
+class CustomTransformerModel:
+    def __init__(self, vocab_size, block_size, n_embd):
+        self.vocab_size = vocab_size
+        self.block_size = block_size
+        self.n_embd = n_embd
 
-    def __init__(self, block_size, n_embd, data):
-        super().__init__()
-        self.max_seq_len = block_size
-        self.n_dim = n_embd
-        self.input_seq = data
+        self.token_embedding_table = self.initialize_token_embeddings()
+        self.position_embedding_table = self.initialize_position_embeddings()
 
-    def forward(self):
-        denominator = torch.pow(10000, self.input_seq / self.n_dim)
-        print(denominator.shape)
-        positions = torch.arange(self.max_seq_len, dtype=torch.float).reshape(self.max_seq_len, 1)
-        print(positions.shape)
+    def initialize_token_embeddings(self):
+        # Initialize token embeddings randomly
+        token_embeddings = torch.randn(self.vocab_size, self.n_embd)
+        # Normalize the embeddings along the embedding dimension
+        token_embeddings /= torch.norm(token_embeddings, dim=1, keepdim=True)
+        return token_embeddings
 
-        even_pe = torch.sin(positions / denominator)
-        odd_pe = torch.cos(positions / denominator)
+    def initialize_position_embeddings(self):
+        # Initialize positional embeddings using sine and cosine functions
+        position_embeddings = torch.zeros(self.block_size, self.n_embd)
+        for pos in range(self.block_size):
+            for i in range(0, self.n_embd, 2):
+                position = torch.tensor(pos, dtype=torch.float)
+                exponent = torch.tensor(i / self.n_embd, dtype=torch.float)
+                position_embeddings[pos, i] = torch.sin(position / (10000 ** exponent))
+                position_embeddings[pos, i + 1] = torch.cos(position / (10000 ** exponent))
+        return position_embeddings
 
-        # pos_encoding = torch.cat([even_pe, odd_pe], dim=1)
-        stacked = torch.stack([even_pe, odd_pe], dim=2)
-        pos_encoding = torch.flatten(stacked, start_dim=1, end_dim=2)
-        return pos_encoding
+    def forward(self, idx):
+        tok_emb = self.token_embedding_table[idx]  # (B, T, C)
+        pos_emb = self.position_embedding_table[:tok_emb.shape[1]]  # (T, C)
 
-class TokenEmbedding:
-    def __init__(self, vocab_size, n_embd, data):
-      self.vocab_size = vocab_size
-      self.n_dim = n_embd
-      self.input_data = data
+        x = tok_emb + pos_emb  # (B, T, C)
+        return x
 
-      self.embedding_matrix = nn.Parameter(torch.rand((self.vocab_size, self.n_dim)))
-      # self.embedding_matrix = nn.Embedding(self.vocab_size, self.n_embd)
+# Example usage
+batch_size = 64
+vocab_size = 483
+block_size = 128
+n_embd = 8
 
-    def forward(self):
-      """
-        maps input indices to embedding vectors
+model = CustomTransformerModel(vocab_size, block_size, n_embd)
+idx = torch.randint(0, vocab_size, (batch_size, block_size))
+print("inputs: ", idx.shape)
 
-        Returns:
-        - embedded_output: tensor containing the corresponding embedding vectors
-      """
-      input_indices = self.input_data.long()
-      embedded_output = self.embedding_matrix.data[input_indices]
+# Access token embedding table
+token_embeddings = model.token_embedding_table
+print("Token Embeddings Shape:", token_embeddings.shape)
 
-      return embedded_output
+# Access positional embedding table
+position_embeddings = model.position_embedding_table
+print("Positional Embeddings Shape:", position_embeddings.shape)
 
-input_seq = torch.randn(10)
-vocab_size = 10000
-block_size = 10
-n_dim = 512
-
-token_encodings = TokenEmbedding(vocab_size, n_dim, input_seq).forward() # vocab_size * n_dim = outputs.shape
-pos_encodings = PositionalEmbedding(block_size, n_dim, input_seq).forward() # block_size * n_dim = output.shape
-print("token:", token_encodings.shape)
-print("pos:", pos_encodings.shape)
-final_encodings = token_encodings + pos_encodings
-
-print('input sequence:', input_seq)
-# print('token encodings:', pos_encodings)
-# print('positional embeddings:', pos_encodings)
-print('final encodings:', final_encodings)
+# Create outputs
+output = model.forward(idx)
+print("Output Shape:", output.shape)
