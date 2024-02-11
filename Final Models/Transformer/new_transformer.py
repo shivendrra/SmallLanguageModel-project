@@ -2,31 +2,74 @@ import torch
 import numpy as np
 
 class nnMods:
- 
-    @staticmethod
-    def token_embeddings(vocab_size, n_embd):
-        token_embeddings = torch.randn(vocab_size, n_embd)
-        token_embeddings /= torch.norm(token_embeddings, dim=1, keepdim=True)
-        return token_embeddings
+    class TokenEmbeddings:
+        def __init__(self, vocab_size, n_embd):
+            self.vocab_size = vocab_size
+            self.n_embd = n_embd
+            self.token_embeddings = self.forward()
+
+        def forward(self):
+            token_embeddings = torch.randn(vocab_size, n_embd)
+            token_embeddings /= torch.norm(token_embeddings, dim=1, keepdim=True)
+            return token_embeddings
+
+    class PositionalEmbeddings:
+        def __init__(self, block_size, n_embd):
+            self.block_size = block_size
+            self.n_embd = n_embd
+            self.positional_embeddings = self.forward()
+
+        def forward(self):
+            position_embeddings = torch.zeros(block_size, n_embd)
+            for pos in range(block_size):
+                for i in range(0, n_embd, 2):
+                    position = torch.tensor(pos, dtype=torch.float)
+                    exponent = torch.tensor(i / n_embd, dtype=torch.float)
+                    position_embeddings[pos, i] = torch.sin(position / (1e4 ** exponent))
+                    position_embeddings[pos, i+1] = torch.cos(position / (1e4 ** exponent))
+            return position_embeddings
+
+    class Sequential:
+        @staticmethod
+        def process(*modules):
+            for module in modules:
+                x = module(x)
+            return x
     
-    @staticmethod
-    def position_embeddings(block_size, n_embd):
-        position_embeddings = torch.zeros(block_size, n_embd)
-        for pos in range(block_size):
-            for i in range(0, n_embd, 2):
-                position = torch.tensor(pos, dtype=torch.float)
-                exponent = torch.tensor(i / n_embd, dtype=torch.float)
-                position_embeddings[pos, i] = torch.sin(position / (10000 ** exponent))
-                position_embeddings[pos, i + 1] = torch.cos(position / (10000 ** exponent))
-        return position_embeddings
+    class LayerNorm:
+        def __init__(self, n_features, eps=1e-5):
+            self.n_features = n_features
+            self.eps = eps
+            self.gamma = torch.ones(n_features)
+            self.beta = torch.zeros(n_features)
+
+        def forward(self, x):
+            # mean and standard deviation along the feature dimension
+            mean = torch.mean(x, dim=-1, keepdim=True)
+            std = torch.std(x, dim=-1, keepdim=True)
+            
+            # normalization
+            x_normalized = (x - mean) / (std + self.eps)
+            
+            # scale and shift
+            y = self.gamma * x_normalized + self.beta
+            return y
+
+
+
+class Block(nnMods):
+    def __init__(self, n_embd, n_head, dropout, block_size):
+        super().__init__()
+        head_size = n_embd // n_head
+        self.attention = MultiHeadAttention(n_head, head_size, dropout, block_size)
+        self.feedForward = FeedForward(n_embd, dropout)
+        self.linear1 = nnMods.LayerNorm(n_embd)
+        self.linear2 = nnMods.LayerNorm(n_embd)
     
-    @staticmethod
-    def sequential(*module):
-        for module in module:
-            x = module(x)
+    def forward(self, x):
+        x = x + self.attention(self.linear1.forward(x))
+        x = x + self.feedForward(self.linear2.forward(x))
         return x
-
-
 
 class CustomTransformerModel(nnMods):
     def __init__(self, vocab_size, block_size, n_embd):
@@ -34,9 +77,8 @@ class CustomTransformerModel(nnMods):
         self.block_size = block_size
         self.n_embd = n_embd
 
-        self.token_embedding_table = nnMods.token_embeddings(self.vocab_size, self.n_embd)
-        self.position_embedding_table = nnMods.position_embeddings(self.block_size, self.n_embd)
-
+        self.token_embedding_table = nnMods.TokenEmbeddings(self.vocab_size, self.n_embd).forward()
+        self.position_embedding_table = nnMods.PositionalEmbeddings(self.block_size, self.n_embd).forward()
 
     def forward(self, idx):
         tok_emb = self.token_embedding_table[idx]  # (B, T, C)
