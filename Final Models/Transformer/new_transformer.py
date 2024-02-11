@@ -2,6 +2,7 @@ import torch
 import numpy as np
 
 class nnMods:
+    """ Neural Network Modules """
     class TokenEmbeddings:
         def __init__(self, vocab_size, n_embd):
             self.vocab_size = vocab_size
@@ -35,7 +36,18 @@ class nnMods:
             for module in modules:
                 x = module(x)
             return x
-    
+
+    class LinearLayer:
+        def __init__(self, input_dim, output_dim):
+            self.input_dim = input_dim
+            self.output_dim = output_dim
+            self.weights = torch.randn(output_dim, input_dim)
+            self.bias = torch.zeros(output)
+        
+        def forward(self, x):
+            output = torch.matmul(x, self.weights.t()) + self.bias
+            return output
+
     class LayerNorm:
         def __init__(self, n_features, eps=1e-5):
             self.n_features = n_features
@@ -55,7 +67,11 @@ class nnMods:
             y = self.gamma * x_normalized + self.beta
             return y
 
+class MultiHeadAttention:
+    pass
 
+class FeedForward:
+    pass
 
 class Block(nnMods):
     def __init__(self, n_embd, n_head, dropout, block_size):
@@ -72,13 +88,13 @@ class Block(nnMods):
         return x
 
 class CustomTransformerModel(nnMods):
-    def __init__(self, vocab_size, block_size, n_embd):
-        self.vocab_size = vocab_size
-        self.block_size = block_size
-        self.n_embd = n_embd
-
-        self.token_embedding_table = nnMods.TokenEmbeddings(self.vocab_size, self.n_embd).forward()
-        self.position_embedding_table = nnMods.PositionalEmbeddings(self.block_size, self.n_embd).forward()
+    def __init__(self, vocab_size, block_size, n_embd, n_head, n_layer, dropout):
+        super().__init__()
+        self.token_embedding_table = nnMods.TokenEmbeddings(vocab_size, n_embd).forward()
+        self.position_embedding_table = nnMods.PositionalEmbeddings(block_size, n_embd).forward()
+        self.blocks = nnMods.Sequential(*[Block(n_embd, n_head, dropout, block_size) for _ in range(n_layer)])
+        self.linear_final = nnMods.LayerNorm(n_embd)
+        self.lm_head = nnMods.LinearLayer(n_embd, vocab_size)
 
     def forward(self, idx):
         tok_emb = self.token_embedding_table[idx]  # (B, T, C)
@@ -91,9 +107,12 @@ batch_size = 64
 vocab_size = 483
 block_size = 128
 n_embd = 8
-
-model = CustomTransformerModel(vocab_size, block_size, n_embd)
+n_head = 4
+n_layer = 4
+dropout = 0.1
 idx = torch.randint(0, vocab_size, (batch_size, block_size))
+
+model = CustomTransformerModel(vocab_size, block_size, n_embd, n_head, n_layer, dropout)
 token_embeddings = model.token_embedding_table
 position_embeddings = model.position_embedding_table
 output = model.forward(idx)
