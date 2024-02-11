@@ -38,14 +38,16 @@ class nnMods:
             return x
 
     class LinearLayer:
-        def __init__(self, input_dim, output_dim):
+        def __init__(self, input_dim, output_dim, bias=True):
             self.input_dim = input_dim
             self.output_dim = output_dim
             self.weights = torch.randn(output_dim, input_dim)
-            self.bias = torch.zeros(output)
+            self.bias = torch.zeros(output_dim) if bias else None
         
         def forward(self, x):
-            output = torch.matmul(x, self.weights.t()) + self.bias
+            output = torch.matmul(x, self.weights.t())
+            if self.bias is not None:
+                output += self.bias
             return output
 
     class LayerNorm:
@@ -66,12 +68,126 @@ class nnMods:
             # scale and shift
             y = self.gamma * x_normalized + self.beta
             return y
+        
+    class Dropout:
+        def __init__(self, dropout_prob):
+            self.dropout_prob = dropout_prob
+            self.mask = None
+        
+        def forward(self, x, training=True):
+            if training:
+                self.mask = (np.random.rand(*x.shape) < self.dropout_prob) / self.dropout_prob
+                return x * self.mask
+            else:
+                return x
+    
+    class ModuleList:
+        def __init__(self, modules):
+            self.modules = modules
+
+        def append(self, module):
+            self.modules.append(module)
+
+        def __getitem__(self, index):
+            return self.modules[index]
+
+        def __len__(self):
+            return len(self.modules)
+
+    class CrossEntropy:
+        def __init__(self, logits, targets, ignore_index=None):
+            self.logits = logits
+            self.targets = targets
+            self.ignore_idx = ignore_index
+
+        def forward(self):
+            logits = np.array(self.logits)
+            targets = np.array(self.targets)
+
+            if self.ignore_idx is not None:
+                mask = (targets != self.ignore_idx)
+                logits = logits[mask]
+                targets = targets[mask]
+
+            exp_logits = np.exp(logits - np.max(logits, axis=-1, keepdims=True))
+            softmax = exp_logits / np.sum(exp_logits, axis=-1, keepdims=True)
+            cross_entropy = -np.log(softmax[np.arange(len(targets)), targets])
+            mean_loss = np.mean(cross_entropy)
+            return mean_loss
+    
+    class Softmax:
+        def __call__(self, x, axis=-1):
+            x -= np.max(x, axis=axis, keepdims=True)
+            exp_x = np.exp(x)
+            softmax_probs = exp_x / np.sum(exp_x, axis=axis, keepdims=True)
+            return softmax_probs
+
+    class GELU:
+        @staticmethod
+        def error_function(x):
+            """Error function (erf) implementation using NumPy."""
+            return 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * x ** 3)))
+
+        @staticmethod
+        def forward(x):
+            """Gaussian Error Linear Unit (GELU) activation function."""
+            return 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * x ** 3)))
+
+        def __call__(self, x):
+            return self.forward(x)
+
+#---------------------
+
+class SingleHead:
+    def __init__(self, n_embd, n_head, dropout, block_size):
+        head_size = n_embd // n_head
+        super().__init__()
+        self.key = nnMods.LinearLayer(n_embd, head_size, bias=False)
+        self.query = nnMods.LinearLayer(n_embd, head_size, bias=False)
+        self.value = nnMods.LinearLayer(n_embd, head_size, bias=False)
+        self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+        self.dropout = nnMods.Dropout(dropout)
+
+    def forward(self, x):
+        B, T, C = x.shape
+        k = self.key(x)
+        q = self.query(x)
+    
+        # compute attention scores ("affinities")
+        wei = q @ k.transpose(-2, -1) * (C // self.tril.size(-1))**-0.5
+        wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
+        wei = nnMods.Softmax(wei, dim=-1)
+        wei = self.dropout.forward(wei)
+    
+        # perform the weighted aggregation of the values
+        v = self.value(x)
+        out = wei @ v
+        return out
 
 class MultiHeadAttention:
-    pass
+    def __init__(self, n_embd, n_head, dropout, block_size):
+        super().__init__()
+        self.head = nnMods.ModuleList([SingleHead(n_embd, n_head, dropout, block_size) for _ in range(n_head)])
+        self.proj = nnMods.LinearLayer(n_head * (n_embd // n_head), n_embd)
+        self.dropout = nnMods.Dropout(dropout)
 
+    def forward(self, x):
+        out = torch.cat([h(x) for h in self.heads], dim=-1)
+        out = self.dropout.forward(out)
+
+        return out
 class FeedForward:
-    pass
+    def __init__(self, n_embd, dropout):
+        super().__init__()
+        self.net = nnMods.Sequential(
+            nnMods.LinearLayer(n_embd, 4*n_embd),
+            nnMods.GELU(),
+            nnMods.LinearLayer(4*n_embd, n_embd),
+            nnMods.Dropout(dropout)
+            )
+    
+    def forward(self, x):
+        return self.net(x)
 
 class Block(nnMods):
     def __init__(self, n_embd, n_head, dropout, block_size):
@@ -95,13 +211,44 @@ class CustomTransformerModel(nnMods):
         self.blocks = nnMods.Sequential(*[Block(n_embd, n_head, dropout, block_size) for _ in range(n_layer)])
         self.linear_final = nnMods.LayerNorm(n_embd)
         self.lm_head = nnMods.LinearLayer(n_embd, vocab_size)
+        self.init_weights()
 
-    def forward(self, idx):
+    def init_weights(self):
+        for module in [self.linear_final, self.lm_head]:
+            # initialize weights
+            torch.nn.init.normal_(module.weights, mean=0.0, std=0.02)
+            # initialize bias if present
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+
+    def forward(self, idx, targets=None):
         tok_emb = self.token_embedding_table[idx]  # (B, T, C)
         pos_emb = self.position_embedding_table[:tok_emb.shape[1]]  # (T, C)
 
         x = tok_emb + pos_emb  # (B, T, C)
-        return x
+        x = self.blocks(x) # (B,T,C)
+        x = self.linear_final(x) # (B,T,C)
+        logits = self.lm_head(x) # (B,T,vocab_size)
+        
+        if targets is None:
+            loss = None
+        else:
+            B, T, C = logits.shape
+            logits = logits.view(B*T, C)
+            targets = targets.view(B*T)
+            loss = nnMods.CrossEntropy(logits, targets, ignore_index=-52)
+        return logits, loss
+
+    def generate(self, idx, max_new_tokens):
+        for _ in range(max_new_tokens):
+            idx_cond = idx[:, -self.block_size:]
+            logits, loss = self(idx_cond)
+            logits = logits[:, -1, :] # becomes (B, C)
+            probs = nnMods.Softmax(logits, dim=-1) # (B, C)
+            idx_next = torch.multinomial(probs, num_samples=1) # (B, 1)
+            idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
+
+        return idx, loss
 
 batch_size = 64
 vocab_size = 483
