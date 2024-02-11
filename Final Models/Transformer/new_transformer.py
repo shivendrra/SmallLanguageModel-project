@@ -1,29 +1,42 @@
 import torch
 import numpy as np
 
-class CustomTransformerModel:
+class nnMods:
+ 
+    @staticmethod
+    def token_embeddings(vocab_size, n_embd):
+        token_embeddings = torch.randn(vocab_size, n_embd)
+        token_embeddings /= torch.norm(token_embeddings, dim=1, keepdim=True)
+        return token_embeddings
+    
+    @staticmethod
+    def position_embeddings(block_size, n_embd):
+        position_embeddings = torch.zeros(block_size, n_embd)
+        for pos in range(block_size):
+            for i in range(0, n_embd, 2):
+                position = torch.tensor(pos, dtype=torch.float)
+                exponent = torch.tensor(i / n_embd, dtype=torch.float)
+                position_embeddings[pos, i] = torch.sin(position / (10000 ** exponent))
+                position_embeddings[pos, i + 1] = torch.cos(position / (10000 ** exponent))
+        return position_embeddings
+    
+    @staticmethod
+    def sequential(*module):
+        for module in module:
+            x = module(x)
+        return x
+
+
+
+class CustomTransformerModel(nnMods):
     def __init__(self, vocab_size, block_size, n_embd):
         self.vocab_size = vocab_size
         self.block_size = block_size
         self.n_embd = n_embd
 
-        self.token_embedding_table = self.initialize_token_embeddings()
-        self.position_embedding_table = self.initialize_position_embeddings()
+        self.token_embedding_table = nnMods.token_embeddings(self.vocab_size, self.n_embd)
+        self.position_embedding_table = nnMods.position_embeddings(self.block_size, self.n_embd)
 
-    def initialize_token_embeddings(self):
-        token_embeddings = torch.randn(self.vocab_size, self.n_embd)
-        token_embeddings /= torch.norm(token_embeddings, dim=1, keepdim=True)
-        return token_embeddings
-
-    def initialize_position_embeddings(self):
-        position_embeddings = torch.zeros(self.block_size, self.n_embd)
-        for pos in range(self.block_size):
-            for i in range(0, self.n_embd, 2):
-                position = torch.tensor(pos, dtype=torch.float)
-                exponent = torch.tensor(i / self.n_embd, dtype=torch.float)
-                position_embeddings[pos, i] = torch.sin(position / (10000 ** exponent))
-                position_embeddings[pos, i + 1] = torch.cos(position / (10000 ** exponent))
-        return position_embeddings
 
     def forward(self, idx):
         tok_emb = self.token_embedding_table[idx]  # (B, T, C)
