@@ -31,9 +31,11 @@ class nnMods:
             return position_embeddings
 
     class Sequential:
-        @staticmethod
-        def process(*modules):
-            for module in modules:
+        def __init__(self, *modules):
+            self.modules = modules
+
+        def process(self, x):
+            for module in self.modules:
                 x = module(x)
             return x
 
@@ -145,7 +147,7 @@ class SingleHead:
         self.key = nnMods.LinearLayer(n_embd, head_size, bias=False)
         self.query = nnMods.LinearLayer(n_embd, head_size, bias=False)
         self.value = nnMods.LinearLayer(n_embd, head_size, bias=False)
-        self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+        # self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
         self.dropout = nnMods.Dropout(dropout)
 
     def forward(self, x):
@@ -172,7 +174,7 @@ class MultiHeadAttention:
         self.dropout = nnMods.Dropout(dropout)
 
     def forward(self, x):
-        out = torch.cat([h(x) for h in self.heads], dim=-1)
+        out = torch.cat([h(x) for h in self.head], dim=-1)
         out = self.dropout.forward(out)
 
         return out
@@ -239,16 +241,31 @@ class CustomTransformerModel(nnMods):
             loss = nnMods.CrossEntropy(logits, targets, ignore_index=-52)
         return logits, loss
 
-    def generate(self, idx, max_new_tokens):
-        for _ in range(max_new_tokens):
-            idx_cond = idx[:, -self.block_size:]
-            logits, loss = self(idx_cond)
-            logits = logits[:, -1, :] # becomes (B, C)
-            probs = nnMods.Softmax(logits, dim=-1) # (B, C)
-            idx_next = torch.multinomial(probs, num_samples=1) # (B, 1)
-            idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
+    def generate(self, idx, max_new_tokens, temperature=0.7, top_k=None):
+        generated_sequence = idx.clone()
 
-        return idx, loss
+        for _ in range(max_new_tokens):
+            idx_cond = generated_sequence[:, -self.block_size:]
+            logits, _ = self(idx_cond)
+
+            # temperature scaling
+            scaled_logits = logits / temperature
+
+            # top-k sampling
+            if top_k is not None:
+                sorted_logits, sorted_indices = torch.sort(scaled_logits[:, -1, :], descending=True)
+                cumulative_probs = torch.cumsum(torch.softmax(sorted_logits, dim=-1), dim=-1)
+                sorted_indices_to_remove = cumulative_probs > top_k
+                sorted_indices_to_remove[:, 1:] = sorted_indices_to_remove[:, :-1].clone()
+                sorted_indices_to_remove[:, 0] = 0
+                for idx in range(sorted_indices_to_remove.size(0)):
+                    scaled_logits[idx, -1, sorted_indices_to_remove[idx]] = float('-inf')
+
+            probs = nnMods.Softmax(scaled_logits[:, -1, :], dim=-1)
+            next_token = torch.multinomial(probs, num_samples=1)
+            generated_sequence = torch.cat((generated_sequence, next_token), dim=1)
+
+        return generated_sequence
 
 batch_size = 64
 vocab_size = 483
