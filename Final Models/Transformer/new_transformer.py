@@ -218,6 +218,18 @@ class CustomTransformerModel(nn.Modules):
         self.linear_final = nn.Modules.LayerNorm(n_embd)
         self.lm_head = nn.Modules.LinearLayer(n_embd, vocab_size)
         self.init_weights()
+    
+    def to(self, device):
+        # Move individual components to the device
+        self.token_embedding_table = self.token_embedding_table.to(device)
+        self.position_embedding_table = self.position_embedding_table.to(device)
+
+        # Move the entire Sequential block to the device
+        self.blocks = self.blocks.to(device)
+
+        self.linear_final = self.linear_final.to(device)
+        self.lm_head = self.lm_head.to(device)
+        return self
 
     def init_weights(self):
         for module in [self.linear_final, self.lm_head]:
@@ -226,6 +238,26 @@ class CustomTransformerModel(nn.Modules):
             # initialize bias if present
             if module.bias is not None:
                 torch.nn.init.zeros_(module.bias)
+    
+    def parameters(self):
+        # Return all parameters of the model
+        params = []
+        for module_name, module in self.__dict__.items():
+            if hasattr(module, 'weights'):
+                params.append(module.weights)
+            if hasattr(module, 'bias') and module.bias is not None:
+                params.append(module.bias)
+            if hasattr(module, 'gamma'):
+                params.append(module.gamma)
+            if hasattr(module, 'beta'):
+                params.append(module.beta)
+        return params
+
+    def eval(self):
+        for module_name, module in self.__dict__.items():
+            if hasattr(module, 'dropout_prob'):
+                # If the module has dropout, set it to evaluation mode
+                module.dropout_prob = 0.0
 
     def forward(self, idx, targets=None):
         tok_emb = self.token_embedding_table[idx]  # (B, T, C)
