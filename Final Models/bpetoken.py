@@ -1,73 +1,87 @@
-from collections import defaultdict
+"""
+Karpathy's BPE code
+"""
 
-def get_stats(vocab):
-    pairs = defaultdict(int)
-    for word, freq in vocab.items():
-        symbols = word.split()
-        for i in range(len(symbols) - 1):
-            pairs[symbols[i], symbols[i + 1]] += freq
-    return pairs
-
-def merge_vocab(pair, vocab):
-    new_vocab = {}
-    bigram = ' '.join(pair)
-    replacement = ''.join(pair)
-    replacement_freq = vocab.get(pair[0], 0) + vocab.get(pair[1], 0)
-
-    for word in vocab:
-        new_word = word.replace(bigram, replacement)
-        new_vocab[new_word] = vocab[word]
-
-    new_vocab[replacement] = replacement_freq
-    return new_vocab
-
-def learn_bpe(text, num_merges):
-    vocab = defaultdict(int)
-    for word in text.split():
-        vocab[' '.join(list(word)) + ' </w>'] += 1
-
-    for i in range(num_merges):
-        pairs = get_stats(vocab)
-        if not pairs:
-            break
-        best_pair = max(pairs, key=pairs.get)
-        vocab = merge_vocab(best_pair, vocab)
-
-    return vocab
-
-def tokenize(text, vocab):
-    text = text + ' </w>'
-    symbols = text.split()
-    for i in range(len(symbols)):
-        if symbols[i] in vocab:
-            symbols[i] = symbols[i]
-        else:
-            symbols[i] = '<unk>'
-    return ' '.join(symbols)
-
-def detokenize(tokens, pad_token='</w>', unk_token='<unk>'):
-    detokenized_text = " ".join(token.replace(pad_token, '</w>').replace(unk_token, '') for token in tokens)
-    return detokenized_text.strip()
-
-# Example usage:
 import os
-os.chdir("d:/Machine Learning/SLM-Project/")
-with open('Data/training_data.txt', 'r', encoding='utf-8') as file:
-    corpus = file.read()
-num_merges = 10
+current_directory = os.path.dirname(os.path.realpath(__file__))
+os.chdir(current_directory)
+import unicodedata
 
-with open('Data/captions.txt', 'r', encoding='utf-8') as file:
-  data = file.read()
+def get_stats(ids, counts=None):
+  counts = {} if counts is None else counts
+  for pair in zip(ids, ids[1:]):
+    counts[pair] = counts.get(pair, 0) + 1
+  return counts
 
+def merge_vocab(ids, pair, idx):
+  newids = []
+  i = 0
+  while i < len(ids):
+    if ids[i] == pair[0] and i < len(ids) - 1 and ids[i+1] == pair[1]:
+      newids.append(idx)
+      i += 2
+    else:
+      newids.append(ids[i])
+      i += 1
+  return newids
 
-bpe_vocab = learn_bpe(corpus, num_merges)
-tokenized_text = tokenize(data, bpe_vocab)
+def replace_control_characters(s: str) -> str:
+    chars = []
+    for ch in s:
+        if unicodedata.category(ch)[0] != "C":
+            chars.append(ch)
+        else:
+            chars.append(f"\\u{ord(ch):04x}")
+    return "".join(chars)
 
-# print("BPE Vocabulary:")
-# print(bpe_vocab, "\n", len(bpe_vocab))
-print("\nTokenized Text:")
-print(tokenized_text)
+def render_token(t: bytes) -> str:
+    s = t.decode('utf-8', errors='replace')
+    s = replace_control_characters(s)
+    return s
 
-detokenized_text = detokenize(tokenized_text)
-print("\nDetokenized Text:")
-print(detokenized_text)
+class BasicTokenizer:
+  def __init__(self):
+    super().__init__()
+  
+  def train(self, text, vocab_size, verbose=False):
+    assert vocab_size >= 256
+    num_merges = vocab_size - 256
+  
+    text_bytes = text.encode('utf-8')
+    ids = list(text_bytes)
+
+    merges = {}
+    vocab = {idx: bytes([idx]) for idx in range(256)}
+    for i in range(num_merges):
+      stats = get_stats(ids)
+      pair = max(stats, key=stats.get)
+      idx = 256 + i
+      idx = merge_vocab(ids, pair, idx)
+      merges[pair] = idx
+      vocab[idx] = vocab[pair[0]] + vocab[pair[1]]
+      
+      if verbose:
+        print(f"merge {i+1}/{num_merges}: {pair} -> {idx} ({vocab[idx]}) had {stats[pair]} occurrences")
+      
+    self.merges = merges
+    self.vocab = vocab
+
+  def decode(self, ids):
+    text_bytes = b"".join(self.vocab[idx] for idx in ids)
+    text = text_bytes.decode("utf-8", errors="replace")
+    return text
+  
+  def encode(self, text):
+    text_bytes = text.encode("utf-8")
+    ids = list(text_bytes)
+    while len(ids) >= 2:
+      stats = get_stats(ids)
+      pair = min(stats, key=lambda p: self.merges.get(p, float("inf")))
+
+      if pair not in self.merges:
+        break
+        
+      idx = self.merges[pair]
+      ids = merge_vocab(ids, pair, idx)
+    
+    return ids
