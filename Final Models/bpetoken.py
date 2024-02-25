@@ -58,7 +58,7 @@ class BasicTokenizer:
       idx = 256 + i
       idx = merge_vocab(ids, pair, idx)
       merges[pair] = idx
-      vocab[idx] = vocab[pair[0]] + vocab[pair[1]]
+      # vocab[idx] = vocab[pair[0]] + vocab[pair[1]]
       
       if verbose:
         print(f"merge {i+1}/{num_merges}: {pair} -> {idx} ({vocab[idx]}) had {stats[pair]} occurrences")
@@ -85,3 +85,16 @@ class BasicTokenizer:
       ids = merge_vocab(ids, pair, idx)
     
     return ids
+
+# example usage
+out_file = '../Data/training_data.txt'
+with open(out_file, 'r', encoding='utf-8') as file:
+  captions = file.read()
+
+token = BasicTokenizer()
+print("training begin--------")
+tokenized_data = token.train(captions, vocab_size=512)
+print("training ends--------", '\nencoding start-------')
+encoded = list(token.encode(captions))
+print("encoded data", encoded[:20])
+print(list(token.decode(tokenized_data))[:20])
