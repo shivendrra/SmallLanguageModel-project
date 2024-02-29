@@ -1,183 +1,133 @@
-import os
-os.chdir('D:/Machine Learning/SLM-Project')
-import timeit
-start_load = timeit.default_timer()
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
-print('code running')
-with open('Data/txt files/big_data_v2.txt', 'r', encoding='utf-8') as file:
-  captions = file.read()
-  print('file loaded')
+class MultiHeadAttention(nn.Module):
+    def __init__(self, d_model, num_heads):
+        super(MultiHeadAttention, self).__init__()
+        assert d_model % num_heads == 0
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.head_dim = d_model // num_heads
+        
+        self.fc_query = nn.Linear(d_model, d_model)
+        self.fc_key = nn.Linear(d_model, d_model)
+        self.fc_value = nn.Linear(d_model, d_model)
+        self.fc_concat = nn.Linear(d_model, d_model)
+    
+    def forward(self, query, key, value, mask=None):
+        batch_size = query.shape[0]
+        
+        Q = self.fc_query(query)
+        K = self.fc_key(key)
+        V = self.fc_value(value)
+        
+        Q = Q.view(batch_size, -1, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
+        K = K.view(batch_size, -1, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
+        V = V.view(batch_size, -1, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
+        
+        energy = torch.matmul(Q, K.permute(0, 1, 3, 2)) / torch.sqrt(torch.tensor(self.head_dim).float())
+        
+        if mask is not None:
+            energy = energy.masked_fill(mask == 0, float('-inf'))
+        
+        attention = torch.softmax(energy, dim=-1)
+        
+        output = torch.matmul(attention, V)
+        output = output.permute(0, 2, 1, 3).contiguous().view(batch_size, -1, self.d_model)
+        output = self.fc_concat(output)
+        
+        return output
 
-start = timeit.default_timer()
+class PositionwiseFeedforward(nn.Module):
+    def __init__(self, d_model, d_ff):
+        super(PositionwiseFeedforward, self).__init__()
+        self.fc1 = nn.Linear(d_model, d_ff)
+        self.fc2 = nn.Linear(d_ff, d_model)
+    
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return x
 
-from tokenizer import EncoderDecoder
-ed = EncoderDecoder()
-# ed.train_tokenizer(captions, vocab_size=40000)
-ed.load_model()
-vocab_size = len(ed.tokenizer.get_vocab())
-input_data = ed.encode(captions)
+class EncoderLayer(nn.Module):
+    def __init__(self, d_model, num_heads, d_ff, dropout):
+        super(EncoderLayer, self).__init__()
+        self.self_attention = MultiHeadAttention(d_model, num_heads)
+        self.feedforward = PositionwiseFeedforward(d_model, d_ff)
+        self.dropout = nn.Dropout(dropout)
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+    
+    def forward(self, src, src_mask):
+        src2 = self.self_attention(src, src, src, src_mask)
+        src = src + self.dropout(src2)
+        src = self.norm1(src)
+        src2 = self.feedforward(src)
+        src = src + self.dropout(src2)
+        src = self.norm2(src)
+        return src
 
-end = timeit.default_timer()
+class DecoderLayer(nn.Module):
+    def __init__(self, d_model, num_heads, d_ff, dropout):
+        super(DecoderLayer, self).__init__()
+        self.self_attention = MultiHeadAttention(d_model, num_heads)
+        self.encoder_attention = MultiHeadAttention(d_model, num_heads)
+        self.feedforward = PositionwiseFeedforward(d_model, d_ff)
+        self.dropout = nn.Dropout(dropout)
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.norm3 = nn.LayerNorm(d_model)
+    
+    def forward(self, trg, enc_src, trg_mask, src_mask):
+        trg2 = self.self_attention(trg, trg, trg, trg_mask)
+        trg = trg + self.dropout(trg2)
+        trg = self.norm1(trg)
+        trg2 = self.encoder_attention(trg, enc_src, enc_src, src_mask)
+        trg = trg + self.dropout(trg2)
+        trg = self.norm2(trg)
+        trg2 = self.feedforward(trg)
+        trg = trg + self.dropout(trg2)
+        trg = self.norm3(trg)
+        return trg
 
-print(f"total words in dataset {len(captions) / 1e9} billion")
-print(f"total no of tokens {len(input_data) / 1e6} million")
-print(f"vocab size is: {vocab_size}")
-print(f"time to load file {(end - start_load) / 60} mins")
-print(f"total time taken to tokenize {(end - start) / 60} mins")
-
-# import torch
-# import torch.nn as nn
-# import numpy as np
-
-# class PositionalEmbedding(nn.Module):
-#     """ generates positional encodings """
-
-#     def __init__(self, block_size, n_embd, data):
-#         super().__init__()
-#         self.max_seq_len = block_size
-#         self.n_dim = n_embd
-#         self.input_seq = data
-#         print(f"max_seq: {self.max_seq_len} \nn_dim: {self.n_dim} \ninput_seq: {np.shape(self.input_seq)}")
-
-#     def forward(self):
-#         denominator = torch.pow(10000, self.input_seq / self.n_dim)
-#         print("denominator", denominator.shape)
-#         positions = torch.arange(self.max_seq_len, dtype=torch.float).reshape(self.max_seq_len, 1)
-#         print("positions", positions.shape)
-#         even_pe = torch.sin(positions / denominator)
-#         print("even pe:",even_pe.shape)
-#         odd_pe = torch.cos(positions / denominator)
-#         print("odd pe:",odd_pe.shape)
-
-#         stacked = torch.stack([even_pe, odd_pe], dim=2)
-#         print("stacked:", stacked.shape)
-#         pos_encoding = torch.flatten(stacked, start_dim=1, end_dim=2)
-#         print("pos encoding:", pos_encoding.shape)
-#         return pos_encoding
-
-# class TokenEncodings:
-#     def __init__(self, vocab_size, n_embd, data):
-#         self.vocab_size = vocab_size
-#         self.n_dim = n_embd
-#         self.input_data = data
-
-#     def forward(self):
-#         embeddings = torch.randn(self.vocab_size, self.n_dim)
-#         embeddings /= torch.norm(embeddings, dim=1, keepdim=True)
-#         return embeddings
-
-# # Example usage
-# input_seq = torch.randn(700)
-# vocab_size = 100
-# block_size = 100
-# n_dim = 512
-
-# token_encodings = TokenEncodings(vocab_size, n_dim, input_seq).forward() # vocab_size * n_dim = outputs.shape
-# pos_embeddings = PositionalEmbedding(block_size, n_dim, input_seq).forward() # block_size * n_dim = output.shape
-# print("\n----------------\n")
-# print("token:", np.shape(token_encodings))
-# print("pos:", np.shape(pos_embeddings))
-# final_encodings = token_encodings + pos_embeddings
-
-# print('input sequence:', input_seq)
-# print('token encodings:', token_encodings)
-# print('positional embeddings:', pos_embeddings)
-# print('final encodings:', final_encodings)
-
-# import torch
-# import torch.nn as nn
-
-# class PositionalEmbedding(nn.Module):
-#     """Generates positional encodings"""
-
-#     def __init__(self, block_size, n_embd):
-#         super().__init__()
-#         self.max_seq_len = block_size
-#         self.n_dim = n_embd
-
-#     def forward(self, input_seq):
-#         denominator = torch.pow(10000, torch.arange(self.n_dim, dtype=torch.float) / self.n_dim)
-#         positions = torch.arange(self.max_seq_len, dtype=torch.float).reshape(self.max_seq_len, 1)
-#         even_pe = torch.sin(positions / denominator)
-#         odd_pe = torch.cos(positions / denominator)
-
-#         # stacked = torch.stack([even_pe, odd_pe], dim=2)
-#         # pos_encoding = torch.flatten(stacked, start_dim=1, end_dim=2)
-#         # pos_encoding = torch.cat([even_pe, odd_pe], dim=1)[:, :self.n_dim]
-
-#         pos_encoding = torch.cat([even_pe, odd_pe], dim=1)[:, :self.n_dim]
-
-#         return pos_encoding
-
-# class TokenEncodings:
-#     def __init__(self, vocab_size, n_embd):
-#         self.vocab_size = vocab_size
-#         self.n_dim = n_embd
-
-#     def forward(self, input_seq):
-#         embeddings = torch.randn(self.vocab_size, self.n_dim)
-#         embeddings /= torch.norm(embeddings, dim=1, keepdim=True)
-#         return embeddings
-
-# # Example usage
-# vocab_size = 512
-# block_size = 64
-# n_dim = 32
-
-# token_encodings = TokenEncodings(vocab_size, n_dim).forward(None)  # No input_seq needed
-# pos_embeddings = PositionalEmbedding(block_size, n_dim).forward(None)  # No input_seq needed
-# print("token:", token_encodings.shape)
-# print("pos:", pos_embeddings.shape)
-# final_encodings = token_encodings + pos_embeddings
-
-# print('token encodings:', token_encodings)
-# print('positional embeddings:', pos_embeddings)
-# print('final encodings:', final_encodings)
-
-# import torch
-
-# torch.manual_seed(1400)
-# class CustomModel:
-#     def __init__(self, vocab_size, block_size, n_embd):
-#         self.vocab_size = vocab_size
-#         self.block_size = block_size
-#         self.n_embd = n_embd
-
-#         # Initialize token embedding table
-#         self.token_embedding_table = self.initialize_token_embeddings()
-
-#         # Initialize positional embedding table
-#         self.position_embedding_table = self.initialize_position_embeddings()
-
-#     def initialize_token_embeddings(self):
-#         # Initialize token embeddings randomly
-#         token_embeddings = torch.randn(self.vocab_size, self.n_embd)
-#         # Normalize the embeddings along the embedding dimension
-#         token_embeddings /= torch.norm(token_embeddings, dim=1, keepdim=True)
-#         return token_embeddings
-
-#     def initialize_position_embeddings(self):
-#         # Initialize positional embeddings using sine and cosine functions
-#         position_embeddings = torch.zeros(self.block_size, self.n_embd)
-#         for pos in range(self.block_size):
-#             for i in range(0, self.n_embd, 2):
-#                 position = torch.tensor(pos, dtype=torch.float)
-#                 exponent = torch.tensor(i / self.n_embd, dtype=torch.float)
-#                 position_embeddings[pos, i] = torch.sin(position / (10000 ** exponent))
-#                 position_embeddings[pos, i + 1] = torch.cos(position / (10000 ** exponent))
-#         return position_embeddings
-
-# # Example usage
-# vocab_size = 1000
-# block_size = 512
-# n_embd = 256
-
-# model = CustomModel(vocab_size, block_size, n_embd)
-
-# # Access token embedding table
-# token_embeddings = model.token_embedding_table
-# print("Token Embeddings Shape:", token_embeddings.shape)
-
-# # Access positional embedding table
-# position_embeddings = model.position_embedding_table
-# print("Positional Embeddings Shape:", position_embeddings.shape)
+class Transformer(nn.Module):
+    def __init__(self, src_vocab_size, trg_vocab_size, d_model, num_layers, num_heads, d_ff, dropout, trg_pad_idx, src_pad_idx):
+        super(Transformer, self).__init__()
+        self.embedding_src = nn.Embedding(src_vocab_size, d_model)
+        self.embedding_trg = nn.Embedding(trg_vocab_size, d_model)
+        self.encoder_layers = nn.ModuleList([EncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)])
+        self.decoder_layers = nn.ModuleList([DecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)])
+        self.fc_out = nn.Linear(d_model, trg_vocab_size)
+        self.dropout = nn.Dropout(dropout)
+        self.src_pad_idx = src_pad_idx
+        self.trg_pad_idx = trg_pad_idx
+        self.d_model = d_model
+    
+    def make_src_mask(self, src):
+        src_mask = (src != self.src_pad_idx).unsqueeze(1).unsqueeze(2)
+        return src_mask
+    
+    def make_trg_mask(self, trg):
+        trg_pad_mask = (trg != self.trg_pad_idx).unsqueeze(1).unsqueeze(2)
+        trg_len = trg.shape[1]
+        trg_sub_mask = torch.tril(torch.ones((trg_len, trg_len), device=trg.device)).bool()
+        trg_mask = trg_pad_mask & trg_sub_mask
+        return trg_mask
+    
+    def forward(self, src, trg):
+        src_mask = self.make_src_mask(src)
+        trg_mask = self.make_trg_mask(trg)
+        
+        src = self.embedding_src(src)
+        trg = self.embedding_trg(trg)
+        
+        for layer in self.encoder_layers:
+            src = layer(src, src_mask)
+        
+        for layer in self.decoder_layers:
+            trg = layer(trg, src, trg_mask, src_mask)
+        
+        output = self.fc_out(trg)
+        
+        return output
