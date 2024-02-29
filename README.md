@@ -45,7 +45,7 @@ decode = lambda l: ''.join([itos[i] for i in l]) # decoder: take a list of integ
 
 ---
 
-Implemented Byte-Pair Encoding this time using `tit-token` library from **OpenAI.** Wrote a basic training, encoding, decoding and saving model functions and then imported as a module in the code. It works fine.
+Implemented Byte-Pair Encoding this time using `tik-token` library from **OpenAI.** Wrote a basic training, encoding, decoding and saving model functions and then imported as a module in the code. It works fine.
 
 ```python
 # Final Models/Transformer/tokenizer.py
@@ -74,7 +74,7 @@ class EncoderDecoder:
 
 ### RNN
 
-`Final Models/RNN` directory contains all the necessary codes to run a RNN model, `titoken` library for tokenizing and encoding the data.
+`Final Models/RNN` directory contains all the necessary codes to run a RNN model, `tikoken` library for tokenizing and encoding the data.
 
 ### Bi-Gram Model
 
