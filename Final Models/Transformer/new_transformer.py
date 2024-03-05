@@ -143,7 +143,7 @@ class nn:
                 return self.forward(x)
 
 #---------------------
-
+      
 class SingleHead(nn.Modules):
     def __init__(self, n_embd, n_head, dropout, block_size):
         head_size = n_embd // n_head
@@ -151,22 +151,22 @@ class SingleHead(nn.Modules):
         self.key = nn.Modules.LinearLayer(n_embd, head_size, bias=False)
         self.query = nn.Modules.LinearLayer(n_embd, head_size, bias=False)
         self.value = nn.Modules.LinearLayer(n_embd, head_size, bias=False)
-        # self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+        self.tril = torch.tril(torch.ones(block_size, block_size))
         self.dropout = nn.Modules.Dropout(dropout)
 
-    def forward(self, x):
+    def __call__(self, x):
         B, T, C = x.shape
-        k = self.key(x)
-        q = self.query(x)
+        k = self.key.forward(x)
+        q = self.query.forward(x)
     
         # compute attention scores ("affinities")
-        wei = q @ k.transpose(-2, -1) * (C // self.tril.size(-1))**-0.5
+        wei = q @ k.transpose(-2, -1) * (C // max(self.tril.size(-1), 1))**-0.5  # Prevent division by zero
         wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
         wei = nn.Functionals.Softmax(wei, dim=-1)
         wei = self.dropout.forward(wei)
     
         # perform the weighted aggregation of the values
-        v = self.value(x)
+        v = self.value.forward(x)
         out = wei @ v
         return out
 
@@ -199,14 +199,14 @@ class Block(nn.Modules):
     def __init__(self, n_embd, n_head, dropout, block_size):
         super().__init__()
         head_size = n_embd // n_head
-        self.attention = MultiHeadAttention(n_head, head_size, dropout, block_size)
+        self.attention = MultiHeadAttention(n_embd, n_head, dropout, block_size)
         self.feedForward = FeedForward(n_embd, dropout)
         self.linear1 = nn.Modules.LayerNorm(n_embd)
         self.linear2 = nn.Modules.LayerNorm(n_embd)
     
-    def forward(self, x):
-        x = x + self.attention(self.linear1.forward(x))
-        x = x + self.feedForward(self.linear2.forward(x))
+    def __call__(self, x):
+        x = x + self.attention.forward(self.linear1.forward(x))
+        x = x + self.feedForward.forward(self.linear2.forward(x))
         return x
 
 class CustomTransformerModel(nn.Modules):
@@ -232,12 +232,15 @@ class CustomTransformerModel(nn.Modules):
         return self
 
     def init_weights(self):
-        for module in [self.linear_final, self.lm_head]:
-            # initialize weights
-            torch.nn.init.normal_(module.weights, mean=0.0, std=0.02)
-            # initialize bias if present
-            if module.bias is not None:
-                torch.nn.init.zeros_(module.bias)
+        for module_name, module in self.__dict__.items():
+            if hasattr(module, 'weights'):
+                torch.nn.init.normal_(module.weights, mean=0.0, std=0.02)
+                if hasattr(module, 'bias') and module.bias is not None:
+                    torch.nn.init.zeros_(module.bias)
+            if hasattr(module, 'gamma'):
+                torch.nn.init.ones_(module.gamma)
+            if hasattr(module, 'beta'):
+                torch.nn.init.zeros_(module.beta)
     
     def parameters(self):
         # Return all parameters of the model
@@ -264,7 +267,7 @@ class CustomTransformerModel(nn.Modules):
         pos_emb = self.position_embedding_table[:tok_emb.shape[1]]  # (T, C)
 
         x = tok_emb + pos_emb  # (B, T, C)
-        x = self.blocks(x) # (B,T,C)
+        x = self.blocks.process(x)  # (B, T, C)
         x = self.linear_final(x) # (B,T,C)
         logits = self.lm_head(x) # (B,T,vocab_size)
         
