@@ -24,8 +24,6 @@ This generates a .txt file of ~600-700MBs approx. You can add more queries and t
 
 ### Pre-processing & tokenization
 ---
-#### Tokenization
----
 ###### ***Character Level***
 In the initial working of the model, I used character level encoding and tokenization, for the Bi-gram model.
 
