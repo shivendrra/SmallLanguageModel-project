@@ -1,3 +1,8 @@
+"""
+  -> main bi-gram model, from Karpathy's lecture
+  -> exact same but with a sub-word level tokenizer, hence better
+"""
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
