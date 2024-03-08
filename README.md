@@ -8,7 +8,7 @@ Inspired from Karpathy's nanoGPT and Shakespeare generator, I made this reposito
 
 ### Architecture
 ---
-![[https://github.com/shivendrra/SmallLanguageModel-project/blob/main/null.png]]
+![architecture}(https://github.com/shivendrra/SmallLanguageModel-project/blob/main/null.png)
 ### Data Collection
 ---
 I used transcripts of around 167k YouTube videos and scrapped around 10k web-pages and generated around ~5Gbs of data. You can download the data from [HuggingFace](https://huggingface.co/datasets/Shivendrra/YouTubeTranscriptData) if you don't wish to repeat the process. I would recommend you to at-least try once, generating the data from that same process, not much but small files, so that you understand it.
