@@ -1,3 +1,11 @@
+"""
+    this code is my attempt to make a transformer model without using any libraries
+    or modules.
+    it doesn't work quiet well, just for understanding the concepts behind each and 
+    every function.
+    try to make it right, if you wish to!!
+"""
+
 import torch
 import numpy as np
 
