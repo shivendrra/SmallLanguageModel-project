@@ -2,7 +2,7 @@
 
 This repository contains all the necessary items needed to build your own LLM from scratch. Just follow the instructions.
 
-![Watch the video](https://youtu.be/PVpyN_2z5II?si=ComGouNtcXctmLvE)
+[![Watch the video]](https://youtu.be/PVpyN_2z5II?si=ComGouNtcXctmLvE)
 
 ## Introduction
 ---
