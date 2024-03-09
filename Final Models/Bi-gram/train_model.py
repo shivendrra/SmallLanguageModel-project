@@ -4,9 +4,9 @@ import os
 os.chdir('D:/Machine Learning/SLM-Project')
 
 with open('Final Models/Transformer/hyperparams.json', 'r', encoding='utf-8') as file:
-  params = json.load(file)
-  
-class TrainModel:
+    params = json.load(file)
+
+class TrainBiGramModel:
     def __init__(self, model, optimizer, train_data, val_data, batch_size, block_size):
         self.max_iters = params['max_iters']
         self.eval_interval = params['eval_interval']
@@ -42,12 +42,13 @@ class TrainModel:
 
     def train_model(self):
         for iter in range(self.max_iters):
-            print(self.max_iters)
             if iter % self.eval_interval == 0 or iter == self.max_iters - 1:
                 losses = self.estimate_loss()
                 print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
 
             xb, yb = self.get_batch('train')
+            # For the bi-gram model, we need to consider only the last two tokens
+            xb = xb[:, -2:, :]
             logits, loss = self.model(xb, yb)
             self.optimizer.zero_grad(set_to_none=True)
             loss.backward()

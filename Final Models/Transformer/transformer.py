@@ -17,23 +17,22 @@ class Head(nn.Module):
         self.query = nn.Linear(n_embd, head_size, bias=False)
         self.value = nn.Linear(n_embd, head_size, bias=False)
         self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
-
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        # input of size (batch, time-step, channels)
-        # output of size (batch, time-step, head size)
+        
         B,T,C = x.shape
-        k = self.key(x)   # (B,T,hs)
-        q = self.query(x) # (B,T,hs)
+        key = self.key(x)
+        query = self.query(x)
+        value = self.value(x)
+        
         # compute attention scores ("affinities")
-        wei = q @ k.transpose(-2,-1) * k.shape[-1]**-0.5 # (B, T, hs) @ (B, hs, T) -> (B, T, T)
-        wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf')) # (B, T, T)
-        wei = F.softmax(wei, dim=-1) # (B, T, T)
-        wei = self.dropout(wei)
-        # perform the weighted aggregation of the values
-        v = self.value(x) # (B,T,hs)
-        out = wei @ v # (B, T, T) @ (B, T, hs) -> (B, T, hs)
+        weight = query @ key.transpose(-2,-1) * key.shape[-1]**-0.5
+        weight = weight.masked_fill(self.tril[:T, :T] == 0, float('-inf'))
+        weight = F.softmax(weight, dim=-1)
+        weight = self.dropout(weight)
+        
+        out = weight @ value
         return out
 
 class MultiHeadAttention(nn.Module):
@@ -56,10 +55,10 @@ class FeedFoward(nn.Module):
     def __init__(self, n_embd, dropout):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(n_embd, 4 * n_embd),
-            nn.ReLU(),
-            nn.Linear(4 * n_embd, n_embd),
-            nn.Dropout(dropout),
+            nn.Linear(n_embd, 4 * n_embd),  # initial linear layer
+            nn.ReLU(),  # ReLU but can be replaced by GELU
+            nn.Linear(4 * n_embd, n_embd),  # secondary linear layer
+            nn.Dropout(dropout),  # ignores some values, applies dropout
         )
 
     def forward(self, x):
@@ -90,7 +89,7 @@ class TransformerModel(nn.Module):
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
         self.blocks = nn.Sequential(*[Block(n_embd=n_embd, n_head=n_head, norm_eps=norm_eps, dropout=dropout, block_size=block_size) for _ in range(n_layer)])
         self.ln_f = nn.LayerNorm(n_embd, eps=norm_eps) # final layer norm
-        self.lm_head = nn.Linear(n_embd, vocab_size)
+        self.lm_head = nn.Linear(n_embd, vocab_size) # final linear layer
         self.apply(self._init_weights)
 
     def _init_weights(self, module):
@@ -104,14 +103,14 @@ class TransformerModel(nn.Module):
     def forward(self, idx, targets=None):
         B, T = idx.shape
 
-        # idx and targets are both (B,T) tensor of integers
-        tok_emb = self.token_embedding_table(idx) # (B,T,C)
-        pos_emb = self.position_embedding_table(torch.arange(T, device=device)) # (T,C)
-        x = tok_emb + pos_emb # (B,T,C)
-        x = self.blocks(x) # (B,T,C)
-        x = self.ln_f(x) # (B,T,C)
-        logits = self.lm_head(x) # (B,T,vocab_size)
+        tok_emb = self.token_embedding_table(idx)
+        pos_emb = self.position_embedding_table(torch.arange(T, device=device))
+        x = tok_emb + pos_emb
+        x = self.blocks(x)  # encoder layer, repeated n_layer times
+        x = self.ln_f(x)  # final layer normalization
+        logits = self.lm_head(x)  # final linear layer
 
+        # calculating loss
         if targets is None:
             loss = None
         else:
@@ -123,18 +122,14 @@ class TransformerModel(nn.Module):
         return logits, loss
 
     def generate(self, idx, max_new_tokens):
-        # idx is (B, T) array of indices in the current context
+
         for _ in range(max_new_tokens):
-            # crop idx to the last block_size tokens
             idx_cond = idx[:, -self.block_size:]
-            # get the predictions
             logits, loss = self(idx_cond)
-            # focus only on the last time step
-            logits = logits[:, -1, :] # becomes (B, C)
-            # apply softmax to get probabilities
-            probs = F.softmax(logits, dim=-1) # (B, C)
-            # sample from the distribution
-            idx_next = torch.multinomial(probs, num_samples=1) # (B, 1)
-            # append sampled index to the running sequence
-            idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
+            logits = logits[:, -1, :]
+            probs = F.softmax(logits, dim=-1)
+            
+            idx_next = torch.multinomial(probs, num_samples=1)
+            idx = torch.cat((idx, idx_next), dim=1)
+        
         return idx

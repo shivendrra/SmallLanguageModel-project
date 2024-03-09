@@ -38,16 +38,16 @@ train_data = torch.tensor(train_data, dtype=torch.long)
 val_data = torch.tensor(val_data, dtype=torch.long)
 vocab_size = encoder_decoder.get_vocab()
 
-from bigram_model import BigramModel
+from bigram_model import BiGramTransformer
 
-model = BigramModel(n_embd, block_size, dropout, n_head, n_layer, vocab_size, device)
+model = BiGramTransformer(n_embd, dropout, n_head, n_layer, vocab_size)
 m = model.to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate) 
 n_params = sum(p.numel() for p in m.parameters())/1e6
 print(n_params, 'Million parameters')
 
-from train_model import TrainModel
-trainer = TrainModel(model=model, optimizer=optimizer, train_data=train_data, val_data=val_data, batch_size=batch_size, block_size=block_size)
+from train_model import TrainBiGramModel
+trainer = TrainBiGramModel(model=model, optimizer=optimizer, train_data=train_data, val_data=val_data, batch_size=batch_size, block_size=block_size)
 trainer.train_model()
 
 end_time = timeit.default_timer()
