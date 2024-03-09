@@ -1,0 +1,4 @@
+-> Check for the errors in the models, or any files; fix the errors
+-> If you have more ways to collect data, new web-scrapping tool, or new kind of data generators, your solutions are welcomed
+-> Try to optimize the data collection algorithms, to run faster
+-> Any new model, like bi-gram, n-gram or LSTM-RNN, if you have made, if it works
