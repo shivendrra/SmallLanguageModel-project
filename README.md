@@ -2,6 +2,8 @@
 
 This repository contains all the necessary items needed to build your own LLM from scratch. Just follow the instructions.
 
+[![Watch the video](https://i.ytimg.com/an_webp/PVpyN_2z5II/mqdefault_6s.webp?du=3000&sqp=CPC3r68G&rs=AOn4CLBatvTCBMEhJYfR5WIfYRaOV80LNQ)](https://youtu.be/PVpyN_2z5II?si=ComGouNtcXctmLvE)
+
 ## Introduction
 ---
 Inspired from Karpathy's nanoGPT and Shakespeare generator, I made this repository to build my own LLM. It has everything from data collection for the Model to architecture file, tokenizer and train file.
@@ -9,6 +11,7 @@ Inspired from Karpathy's nanoGPT and Shakespeare generator, I made this reposito
 ### Architecture
 ---
 ![architecture](https://github.com/shivendrra/SmallLanguageModel-project/blob/main/null.png)
+
 ### Data Collection
 ---
 I used transcripts of around 167k YouTube videos and scrapped around 10k web-pages and generated around ~5Gbs of data. You can download the data from [HuggingFace](https://huggingface.co/datasets/Shivendrra/YouTubeTranscriptData) if you don't wish to repeat the process. I would recommend you to at-least try once, generating the data from that same process, not much but small files, so that you understand it.
@@ -133,17 +136,8 @@ generated_output = tokenizer.decode(model.generate(context, max_new_tokens=10)[0
 print(generated_output)
 ```
 
-### Models
+### Model
 ---
-#### RNN
----
-`Final Models/RNN` directory contains all the necessary codes to run a RNN model, `tikoken` library for tokenizing and encoding the data.
-This has some issues, that I need to fix
-
-#### Bi-Gram Model
----
-Made with the help of Karpathy's video '[Let's build GPT: from scratch, in code, spelled out](https://youtu.be/kCc8FmEb1nY?si=aHFUrNbYudojGW4j)' with some changes in hyper-parameters and tokenization process, rest is almost same.
-
 #### Basic-Transformer
 ---
 It follows a basic architecture, just `Block` class that has layers of `MultiHeadAttention`,  `FeedForward` followed by two Normalization layers, repeating n times and a Linear layer at final. Very basic, easy to understand.
@@ -169,6 +163,12 @@ class GPTLanguageModel(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 ```
+
+#### Seq-2-Seq Transfomer
+---
+It is the more complex one, with encoder and decoder layers present, repeating `n_times` to give the output. It's still in progress, I'll make it and upload it as soon as possible.
+
+![transformer, complex one](https://miro.medium.com/v2/resize:fit:1100/format:webp/1*lakCEUEsboAelz-yum7SjA.png)
 
 ### Contributing
 ---
