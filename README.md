@@ -2,8 +2,6 @@
 
 This repository contains all the necessary items needed to build your own LLM from scratch. Just follow the instructions.
 
-[![Watch the video](https://i.ytimg.com/an_webp/PVpyN_2z5II/mqdefault_6s.webp?du=3000&sqp=CPC3r68G&rs=AOn4CLBatvTCBMEhJYfR5WIfYRaOV80LNQ)](https://youtu.be/PVpyN_2z5II?si=ComGouNtcXctmLvE)
-
 ## Introduction
 ---
 Inspired from Karpathy's nanoGPT and Shakespeare generator, I made this repository to build my own LLM. It has everything from data collection for the Model to architecture file, tokenizer and train file.
