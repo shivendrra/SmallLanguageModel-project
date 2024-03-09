@@ -9,3 +9,4 @@ Data/finetuning data
 *.pth
 *.pdf
 extra.txt
+thumbnail.png
