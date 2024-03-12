@@ -6,6 +6,8 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 torch.manual_seed(1400)
 
 class Head(nn.Module):
+  """ one head of self-attention """
+
   def __init__(self, d_embd, n_head, dropout, block_size):
     head_size = d_embd // n_head
     super().__init__()
@@ -16,9 +18,23 @@ class Head(nn.Module):
     self.dropout = nn.Dropout(dropout)
   
   def forward(self, x):
-    pass
-
+    B,T,C = x.shape
+    key = self.key(x)   # (B,T,hs)
+    query = self.query(x) # (B,T,hs)
+    
+    # compute attention scores ("affinities")
+    weights = query @ key.transpose(-2,-1) * key.shape[-1]**-0.5 # (B, T, hs) @ (B, hs, T) -> (B, T, T)
+    weights = weights.masked_fill(self.tril[:T, :T] == 0, float('-inf')) # (B, T, T)
+    weights = F.softmax(weights, dim=-1) # (B, T, T)
+    weights = self.dropout(weights)
+    
+    # perform the weighted aggregation of the values
+    value = self.value(x) # (B,T,hs)
+    out = weights @ value # (B, T, T) @ (B, T, hs) -> (B, T, hs)
+    return out
 class MultiHeadAttention(nn.Module):
+  """ multiple heads of self-attention in parallel """
+
   def __init__(self, d_embd, n_head, dropout, block_size):
     super().__init__()
     self.heads = nn.ModuleList([Head(d_embd=d_embd, n_head=n_head, dropout=dropout, block_size=block_size) for _ in range(n_head)])
@@ -32,17 +48,20 @@ class MultiHeadAttention(nn.Module):
     return out
 
 class FeedForward:
+  """ dual linear layer with GELU function """
   def __init__(self, d_embd):
     super().__init__()
-    self.fc1 = nn.Linear(d_embd, 4*d_embd)  # n_ff = 4*d_embd
-    self.fc2 = nn.Linear(4*d_embd, d_embd)
+    self.fc1 = nn.Linear(d_embd, 4*d_embd) # n_ff = 4*d_embd
+    self.fc2 = nn.Linear(4*d_embd, d_embd) # n_ff = 4*d_embd
   
   def forward(self, x):
-    x = F.gelu(self.fc1(x))
+    x = F.gelu(self.fc1(x)) # GELU insted of ReLU
     x = self.fc2(x)
     return x
   
 class EncoderDecoderAttention(nn.Module):
+  """ separate attention layer for decoder layer """
+
   def __init__(self, d_embd, n_head, dropout, block_size):
     super().__init__()
     self.heads = nn.ModuleList([Head(d_embd, n_head, dropout, block_size) for _ in range(n_head)])
@@ -68,6 +87,8 @@ class EncoderDecoderAttention(nn.Module):
     return output
 
 class EncoderLayer(nn.Module):
+  """ Encoder Layer """
+
   def __init__(self, d_embd, n_head, dropout, block_size):
     super().__init__()
     self.s_att = MultiHeadAttention(d_embd=d_embd, n_head=n_head, block_size=block_size, dropout=dropout)
@@ -88,6 +109,8 @@ class EncoderLayer(nn.Module):
     return src
 
 class DecoderLayer(nn.Module):
+  """ Decoder Layer """
+
   def __init__(self, d_embd, n_head, dropout, block_size) -> None:
     super().__init__()
     self.s_att = MultiHeadAttention(d_embd=d_embd, n_head=n_head, block_size=block_size, dropout=dropout)
