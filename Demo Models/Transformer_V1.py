@@ -18,7 +18,7 @@ dropout = 0.0
 torch.manual_seed(1337)
 
 # read the data
-with open('training_data.txt', 'r', encoding='utf-8') as f:
+with open('captions.txt', 'r', encoding='utf-8') as f:
   text = f.read()
 
 # list of all unique characters present in the document
