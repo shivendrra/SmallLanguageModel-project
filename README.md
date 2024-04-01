@@ -3,15 +3,12 @@
 This repository contains all the necessary items needed to build your own LLM from scratch. Just follow the instructions.
 
 ## Introduction
----
 Inspired from Karpathy's nanoGPT and Shakespeare generator, I made this repository to build my own LLM. It has everything from data collection for the Model to architecture file, tokenizer and train file.
 
 ### Architecture
----
 ![architecture](https://github.com/shivendrra/SmallLanguageModel-project/blob/main/null.png)
 
 ### Data Collection
----
 I used transcripts of around 167k YouTube videos and scrapped around 10k web-pages and generated around ~5Gbs of data. You can download the data from [HuggingFace](https://huggingface.co/datasets/Shivendrra/YouTubeTranscriptData) if you don't wish to repeat the process. I would recommend you to at-least try once, generating the data from that same process, not much but small files, so that you understand it.
 If you want to specially learn about it, the data collection part, here is the repo: [Data-Collection Repository](https://github.com/shivendrra/data-collection)
 #### YouTube Transcripts
@@ -24,7 +21,6 @@ WebScrapper uses `BeautifulSoup` and `requests` library in python to scrape 
 This generates a .txt file of ~600-700MBs approx. You can add more queries and topics for more data.
 
 ### Pre-processing & tokenization
----
 ###### ***Character Level***
 In the initial working of the model, I used character level encoding and tokenization, for the Bi-gram model.
 
@@ -70,7 +66,6 @@ class Tokenizer:
 ```
 
 ### Training
----
 It's very simple, once you have a dataset, downloaded from huggingface or generated using the code provided, you'll have to choose the model you want, bi-gram or transformer, import it along with the tokenizer and train loop, and train it according to your required iterations. Modify `hyperparams.json` as your wish.
 Or you can just use the pre-written `main_script.py` to start training it.
 I've also provided Colab Notebooks for each type of model, in case you want to train it on a bigger level like me.
@@ -135,7 +130,6 @@ print(generated_output)
 ```
 
 ### Model
----
 #### Basic-Transformer
 ---
 It follows a basic architecture, just `Block` class that has layers of `MultiHeadAttention`,  `FeedForward` followed by two Normalization layers, repeating n times and a Linear layer at final. Very basic, easy to understand.
@@ -173,10 +167,8 @@ It is the more complex one, with encoder and decoder layers present, repeating `
 [![Star History Chart](https://api.star-history.com/svg?repos=shivendrra/SmallLanguageModel-project&type=Date)](https://star-history.com/#shivendrra/SmallLanguageModel-project&Date)
 
 ### Contributing
----
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 Please make sure to update tests as appropriate.
 
 ### License
----
-none!
+MIT
