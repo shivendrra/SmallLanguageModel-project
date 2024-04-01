@@ -5,23 +5,23 @@ This repository contains all the necessary items needed to build your own LLM fr
 ## Introduction
 Inspired from Karpathy's nanoGPT and Shakespeare generator, I made this repository to build my own LLM. It has everything from data collection for the Model to architecture file, tokenizer and train file.
 
-### Architecture
+## Architecture
 ![architecture](https://github.com/shivendrra/SmallLanguageModel-project/blob/main/null.png)
 
-### Data Collection
+## Data Collection
 I used transcripts of around 167k YouTube videos and scrapped around 10k web-pages and generated around ~5Gbs of data. You can download the data from [HuggingFace](https://huggingface.co/datasets/Shivendrra/YouTubeTranscriptData) if you don't wish to repeat the process. I would recommend you to at-least try once, generating the data from that same process, not much but small files, so that you understand it.
 If you want to specially learn about it, the data collection part, here is the repo: [Data-Collection Repository](https://github.com/shivendrra/data-collection)
-#### YouTube Transcripts
+### YouTube Transcripts
 ---
 YouTube's V3 API is required to fetch results(video ids, urls and captions). Use `Data Collector/transcriptCollector.py` for collecting the data. `Channel_Ids.json` already has more than 45 channels' ids who have available caption data. It will take around 3days to fetch all the transcripts from over 200K videos and file size will be ~3GBs.
-#### WebScrapping
+### WebScrapping
 ---
 WebScrapper uses `BeautifulSoup` and `requests` library in python to scrape data from the web, _Britannica.com_ in this case. `mainScrapper.py` scrapes data from the website by building custom urls from the `search_queries.json` and then requesting on the url to get the data.
 
 This generates a .txt file of ~600-700MBs approx. You can add more queries and topics for more data.
 
-### Pre-processing & tokenization
-###### ***Character Level***
+## Pre-processing & tokenization
+### ***Character Level***
 In the initial working of the model, I used character level encoding and tokenization, for the Bi-gram model.
 
 ```python
@@ -37,7 +37,7 @@ encode = lambda s: [stoi[c] for c in s] # encoder: take a string, output a list 
 decode = lambda l: ''.join([itos[i] for i in l]) # decoder: take a list of integers, output a string
 ```
 
-###### ***Sub-word Level***
+### ***Sub-word Level***
 Implemented Byte-Pair Encoding this time using `tik-token` library from **OpenAI.** Wrote a basic training, encoding, decoding and saving model functions and then imported as a module in the code. It works fine.
 
 ```python
@@ -65,7 +65,7 @@ class Tokenizer:
     return self.tokenizer.n_vocab
 ```
 
-### Training
+## Training
 It's very simple, once you have a dataset, downloaded from huggingface or generated using the code provided, you'll have to choose the model you want, bi-gram or transformer, import it along with the tokenizer and train loop, and train it according to your required iterations. Modify `hyperparams.json` as your wish.
 Or you can just use the pre-written `main_script.py` to start training it.
 I've also provided Colab Notebooks for each type of model, in case you want to train it on a bigger level like me.
@@ -129,8 +129,8 @@ generated_output = tokenizer.decode(model.generate(context, max_new_tokens=10)[0
 print(generated_output)
 ```
 
-### Model
-#### Basic-Transformer
+## Model
+### Basic-Transformer
 ---
 It follows a basic architecture, just `Block` class that has layers of `MultiHeadAttention`,  `FeedForward` followed by two Normalization layers, repeating n times and a Linear layer at final. Very basic, easy to understand.
 
@@ -156,7 +156,7 @@ class GPTLanguageModel(nn.Module):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 ```
 
-#### Seq-2-Seq Transfomer
+### Seq-2-Seq Transfomer
 ---
 It is the more complex one, with encoder and decoder layers present, repeating `n_times` to give the output. It's still in progress, I'll make it and upload it as soon as possible.
 
@@ -166,9 +166,9 @@ It is the more complex one, with encoder and decoder layers present, repeating `
 
 [![Star History Chart](https://api.star-history.com/svg?repos=shivendrra/SmallLanguageModel-project&type=Date)](https://star-history.com/#shivendrra/SmallLanguageModel-project&Date)
 
-### Contributing
+## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 Please make sure to update tests as appropriate.
 
-### License
+## License
 MIT
