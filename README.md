@@ -168,6 +168,10 @@ It is the more complex one, with encoder and decoder layers present, repeating `
 
 ![transformer, complex one](https://miro.medium.com/v2/resize:fit:1100/format:webp/1*lakCEUEsboAelz-yum7SjA.png)
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=shivendrra/SmallLanguageModel-project&type=Date)](https://star-history.com/#shivendrra/SmallLanguageModel-project&Date)
+
 ### Contributing
 ---
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
