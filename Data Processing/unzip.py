@@ -1,12 +1,8 @@
-""" 
-this code is for unzipping and extracting files
-"""
+""" this code is for unzipping and extracting files """
 
 import os
 import gzip
 import shutil
-
-os.chdir("D:/Machine Learning/SLM-Project/")
 
 def unzip_all_files(input_directory, output_directory):
   os.makedirs(output_directory, exist_ok=True)
@@ -33,6 +29,8 @@ def unzip_all_files(input_directory, output_directory):
       print(f"Skipping non-GZip file: {file_name}")
 
 if __name__ == "__main__":
+  current_directory = os.path.dirname(os.path.abspath(__file__))
+  os.chdir(current_directory)
   input_directory = "Data/zipped files"
   output_directory = "Data/zipped files"
 

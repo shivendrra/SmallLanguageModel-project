@@ -1,9 +1,8 @@
-"""
-this code adds all the text files in a given folder and then concatinate in a one big .txt file
-"""
+""" consolidates all file present in a directory into a big file """
 
 import os
-os.chdir("D:/Machine Learning/SLM-Project/")
+current_directory = os.path.dirname(os.path.abspath(__file__))
+os.chdir(current_directory)
 
 def combine_text_files(input_directory, output_file):
   files = os.listdir(input_directory)
@@ -23,6 +22,6 @@ def combine_text_files(input_directory, output_file):
         print(f"Skipping non-text file: {file_name}")
 
 if __name__ == "__main__":
-  input_directory = "Data/txt files"
-  output_file = "Data/txt files/big_data.txt"
+  input_directory = "../pre-train/output"
+  output_file = "../datasets/consolidated_01.txt"
   combine_text_files(input_directory, output_file)
