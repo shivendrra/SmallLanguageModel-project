@@ -1,0 +1,6 @@
+tqdm
+tiktoken
+bs4
+requests
+regex
+timeit
