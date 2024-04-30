@@ -14,8 +14,3 @@ scrape = WikiScraper()
 queries = queries()
 output_file = f'../Datasets/wiki_{len(queries)}.txt'
 scrape(out_file=output_file, search_queries=queries, extra_urls=True)
-
-import os
-current_dir = os.path.dirname(os.path.abspath(__file__))
-os.chdir(current_dir)
-import timeit
